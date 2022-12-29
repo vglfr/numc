@@ -5,6 +5,8 @@
 pkgs.mkShell {
   buildInputs = [
     pkgs.cabal-install
-    pkgs.haskell.compiler.ghc924
+    pkgs.clang
+    pkgs.haskell.compiler.ghc902
+    pkgs.llvmPackages_12.llvm
   ];
 }

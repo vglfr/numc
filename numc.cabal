@@ -5,20 +5,23 @@ author:          vglfr
 maintainer:      vf.velt@gmail.com
 
 common common
-  default-language:
-    GHC2021
+--  default-language:
+--    GHC2021
   ghc-options:
     -Wall
     -Wcompat
     -Werror
     -Widentities
-    -Wincomplete-record-updates
+--    -Wincomplete-record-updates
     -Wincomplete-uni-patterns
     -Wpartial-fields
     -Wredundant-constraints
   build-depends:
-      base == 4.16.*
-    , parsec == 3.1.*
+      base == 4.15.*
+    , bytestring == 0.10.*
+    , llvm-hs == 12.0.*
+    , llvm-hs-pure == 12.0.*
+--    , parsec == 3.1.*
 
 library
   import:
