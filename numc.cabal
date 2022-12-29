@@ -1,0 +1,51 @@
+cabal-version:   3.8
+name:            numc
+version:         0.0.1.0
+author:          vglfr
+maintainer:      vf.velt@gmail.com
+
+common common
+  default-language:
+    GHC2021
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Werror
+    -Widentities
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wpartial-fields
+    -Wredundant-constraints
+  build-depends:
+      base == 4.16.*
+    , parsec == 3.1.*
+
+library
+  import:
+    common
+  exposed-modules:
+    Numc
+  hs-source-dirs:
+    src
+
+executable numc
+  import:
+    common
+  build-depends:
+    numc
+  hs-source-dirs:
+    app
+  main-is:
+    Main.hs
+
+test-suite numc-test
+  import:
+    common
+  build-depends:
+    numc
+  hs-source-dirs:
+    test
+  main-is:
+    Main.hs
+  type:
+    exitcode-stdio-1.0
