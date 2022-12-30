@@ -14,13 +14,14 @@ import LLVM.AST
   , Operand (ConstantOperand, LocalReference)
   , Parameter (Parameter)
   , Terminator (Ret)
-  , Type (ArrayType)
+  , Type (ArrayType, FunctionType)
   , defaultModule
   , moduleDefinitions
   , moduleName
   , moduleSourceFileName
   )
-import LLVM.AST.Constant (Constant (Array, Int))
+import LLVM.AST.CallingConvention (CallingConvention (C))
+import LLVM.AST.Constant (Constant (Array, GlobalReference, Int))
 import LLVM.AST.Global (
     basicBlocks, functionDefaults, globalVariableDefaults, initializer, isConstant, linkage, name, parameters
   , returnType, type',
@@ -28,7 +29,7 @@ import LLVM.AST.Global (
 import LLVM.AST.Linkage (Linkage (External, Private))
 import LLVM.AST.Type (i8, i32, ptr, void)
 import LLVM.Context (withContext)
-import LLVM.AST.Instruction (Instruction (Call), tailCallKind)
+import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
 import LLVM.Module (moduleLLVMAssembly, withModuleFromAST)
 
 {-
@@ -69,7 +70,7 @@ printf = GlobalDefinition functionDefaults
   , linkage = External
   , parameters =
     ( [ Parameter (ptr i8) (UnName 0) [] ]
-    , True ) -- set vararg
+    , True )
   , returnType = i32
   , basicBlocks = []
   }
@@ -89,8 +90,8 @@ add = GlobalDefinition functionDefaults
   e1 = BasicBlock
     ( Name "" )
     [ UnName 1 :=
-        Add False  -- no   signed wrap
-            False  -- no unsigned wrap
+        Add False
+            False
             (LocalReference i32 (Name "a"))
             (LocalReference i32 (Name "b"))
             [] ]
@@ -107,21 +108,29 @@ main' = GlobalDefinition functionDefaults
   body = BasicBlock
     ( Name "" )
     [ UnName 1 :=
-        Add False  -- no   signed wrap
-            False  -- no unsigned wrap
-            (ConstantOperand $ Int 32 1)
-            (ConstantOperand $ Int 32 1)
-            []
+        GetElementPtr False
+                      (ConstantOperand $ GlobalReference (ptr $ ArrayType 2 i8) (Name ".fstr"))
+                      [ ConstantOperand $ Int 32 0
+                      , ConstantOperand $ Int 32 0 ]
+                      []
     , UnName 2 :=
-        Add False  -- no   signed wrap
-            False  -- no unsigned wrap
-            (ConstantOperand $ Int 32 1)
-            (ConstantOperand $ Int 32 1)
-            []
-    , UnName 0 := Call undefined
-      -- {
-      --   tailCallKind = Nothing
-      -- }
+        Call Nothing
+             C
+             []
+             (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType i32 [i32, i32] False) (Name "add"))
+             [ (ConstantOperand $ Int 32 0, [])
+             , (ConstantOperand $ Int 32 97, []) ]
+             []
+             []
+    , Do $
+        Call Nothing
+             C
+             []
+             (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType i32 [ptr i8] True) (Name "printf"))
+             [ (LocalReference (ptr i8) (UnName 1), [])
+             , (LocalReference      i32 (UnName 2), []) ]
+             []
+             []
     ]
     ( Do $ Ret Nothing [] )
 
