@@ -4,26 +4,18 @@ module Numc.AST where
 
 data Expr
   = Val Double
-  | Bin Bin
+  | Expr :+ Expr
+  | Expr :- Expr
+  | Expr :* Expr
+  | Expr :/ Expr
   | Fun Expr
   | Exe Expr Expr
   deriving Show
 
-data Bin
-  = Expr :+ Expr
-  -- | Expr :- Expr
-  | Expr :* Expr
-  | Expr :/ Expr
-  deriving Show
+infixl 5 :+
+infixl 5 :-
+infixl 6 :*
+infixl 6 :/
 
 instance Num Expr where
   fromInteger = Val . fromInteger
-
-(:-) :: Expr -> Expr -> Expr
-(:-) = undefined
-
--- a :: Expr
--- a = Op Add 1 2
-
--- parse :: IO ()
--- parse = print a

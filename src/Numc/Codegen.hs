@@ -4,7 +4,9 @@
 module Numc.Codegen where
 
 import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (putStrLn)
 import Foreign.Ptr (FunPtr, castFunPtr)
+
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
@@ -35,7 +37,10 @@ import LLVM.Context (Context, withContext)
 import LLVM.ExecutionEngine (MCJIT, getFunction, withMCJIT, withModuleInEngine)
 import LLVM.Module (moduleLLVMAssembly, withModuleFromAST)
 
-foreign import ccall "dynamic" haskFun :: FunPtr (IO ()) -> IO ()
+import Prelude hiding (putStrLn)
+
+-- foreign import ccall "dynamic" mainFFI :: FunPtr (IO ()) -> IO ()
+foreign import ccall "dynamic"  addFFI :: FunPtr (IO Int) -> IO Int
 
 {-
 
@@ -102,6 +107,25 @@ add = GlobalDefinition functionDefaults
             [] ]
     ( Do $ Ret (Just $ LocalReference i32 $ UnName 1) [] )
 
+add' :: Definition
+add' = GlobalDefinition functionDefaults
+  {
+    name = Name "add"
+  , parameters = ([], False)
+  , returnType = i32
+  , basicBlocks = [e1]
+  }
+ where
+  e1 = BasicBlock
+    ( Name "" )
+    [ UnName 1 :=
+        Add False
+            False
+            (ConstantOperand $ Int 32 0)
+            (ConstantOperand $ Int 32 97)
+            [] ]
+    ( Do $ Ret (Just $ LocalReference i32 $ UnName 1) [] )
+
 main' :: Definition
 main' = GlobalDefinition functionDefaults
   {
@@ -158,16 +182,36 @@ jit c = withMCJIT c optlevel model ptrelim fastins
   ptrelim  = Nothing -- frame pointer elimination
   fastins  = Nothing -- fast instruction selection
 
-runJIT :: Module -> IO ()
-runJIT m = withContext $
+-- runMain :: Module -> IO ()
+-- runMain m = withContext $
+--   \c -> jit c $
+--     \e -> withModuleFromAST c m $
+--       \m' -> withModuleInEngine e m' $
+--         \e' -> do
+--           mainfn <- getFunction e' (Name "main")
+--           case mainfn of
+--             Just f  -> mainFFI . castFunPtr $ f
+--             Nothing -> error "fook"
+
+runAdd' :: Module -> IO Int
+runAdd' m = withContext $
   \c -> jit c $
     \e -> withModuleFromAST c m $
       \m' -> withModuleInEngine e m' $
         \e' -> do
-          mainfn <- getFunction e' (Name "main")
+          mainfn <- getFunction e' (Name "add")
           case mainfn of
-            Just f  -> haskFun . castFunPtr $ f
+            Just f  -> addFFI . castFunPtr $ f
             Nothing -> error "fook"
+
+printAST :: IO ()
+printAST = (toIR . toMod $ [add']) >>= putStrLn
+
+-- evalMain :: IO ()
+-- evalMain = runMain . toMod $ [fstr, printf, add, main']
+
+evalRepl :: IO ()
+evalRepl = (runAdd' . toMod $ [add']) >>= print
 
 -- toObj :: AST.Module -> IO ()
 -- toObj ast = do

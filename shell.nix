@@ -12,7 +12,7 @@ in
     pkgs ? import <nixpkgs> { inherit config; }
   }:
 
-  pkgs.mkShell {
+  pkgs.mkShell rec {
     buildInputs = [
       pkgs.cabal-install
       pkgs.haskell.compiler.ghc902
@@ -20,4 +20,6 @@ in
       pkgs.haskell-language-server
       pkgs.llvmPackages_12.llvm
     ];
+
+    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
   }

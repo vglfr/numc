@@ -24,8 +24,9 @@ library
   import:
     common
   exposed-modules:
-    Numc.AST
-    Numc.Codegen
+      Numc.AST
+    , Numc.Codegen
+    , Numc.Example
   hs-source-dirs:
     src
 
