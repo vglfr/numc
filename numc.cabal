@@ -26,6 +26,7 @@ library
   exposed-modules:
       Numc.AST
     , Numc.Codegen
+    , Numc.Compiler
     , Numc.Example
   hs-source-dirs:
     src
