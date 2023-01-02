@@ -5,14 +5,11 @@ author:          vglfr
 maintainer:      vf.velt@gmail.com
 
 common common
---  default-language:
---    GHC2021
   ghc-options:
     -Wall
     -Wcompat
     -Werror
     -Widentities
---    -Wincomplete-record-updates
     -Wincomplete-uni-patterns
     -Wpartial-fields
     -Wredundant-constraints
@@ -27,7 +24,8 @@ library
   import:
     common
   exposed-modules:
-    Numc
+    Numc.AST
+    Numc.Codegen
   hs-source-dirs:
     src
 

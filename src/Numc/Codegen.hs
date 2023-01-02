@@ -1,8 +1,10 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Numc where
+module Numc.Codegen where
 
 import Data.ByteString (ByteString)
+import Foreign.Ptr (FunPtr, castFunPtr)
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
@@ -26,11 +28,14 @@ import LLVM.AST.Global (
     basicBlocks, functionDefaults, globalVariableDefaults, initializer, isConstant, linkage, name, parameters
   , returnType, type',
   )
+import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
 import LLVM.AST.Linkage (Linkage (External, Private))
 import LLVM.AST.Type (i8, i32, ptr, void)
-import LLVM.Context (withContext)
-import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
+import LLVM.Context (Context, withContext)
+import LLVM.ExecutionEngine (MCJIT, getFunction, withMCJIT, withModuleInEngine)
 import LLVM.Module (moduleLLVMAssembly, withModuleFromAST)
+
+foreign import ccall "dynamic" haskFun :: FunPtr (IO ()) -> IO ()
 
 {-
 
@@ -43,12 +48,12 @@ define i32 @add(i32 %a, i32 %b) {
   ret i32 %1
 }
 
-define void @main() {
+define i32 @main() {
   %1 = getelementptr [2 x i8], [2 x i8]* @.fstr, i32 0, i32 0
   %2 = call i32 @add(i32 0, i32 97)
 
   call i32 (i8*, ...) @printf(i8* %1, i32 %2)
-  ret void
+  ret i32 %2
 }
 
 -}
@@ -145,9 +150,24 @@ toMod ds = defaultModule
 toIR :: Module -> IO ByteString
 toIR m = withContext $ \c -> withModuleFromAST c m moduleLLVMAssembly
 
+jit :: Context -> (MCJIT -> IO a) -> IO a
+jit c = withMCJIT c optlevel model ptrelim fastins
+ where
+  optlevel = Just 2  -- optimization level
+  model    = Nothing -- code model ( Default )
+  ptrelim  = Nothing -- frame pointer elimination
+  fastins  = Nothing -- fast instruction selection
 
-
-
+runJIT :: Module -> IO ()
+runJIT m = withContext $
+  \c -> jit c $
+    \e -> withModuleFromAST c m $
+      \m' -> withModuleInEngine e m' $
+        \e' -> do
+          mainfn <- getFunction e' (Name "main")
+          case mainfn of
+            Just f  -> haskFun . castFunPtr $ f
+            Nothing -> error "fook"
 
 -- toObj :: AST.Module -> IO ()
 -- toObj ast = do
@@ -163,17 +183,3 @@ toIR m = withContext $ \c -> withModuleFromAST c m moduleLLVMAssembly
 --       withHostTargetMachineDefault $ \target -> do
 --         writeObjectToFile target (File "bin/test.o") llvm
 --         void $ readProcess "gcc" ["bin/test.o", "-o", "bin/a.out"] ""
-
-
-
-
--- data Expr = Val Int | Op Op Int Int deriving Show
-
--- data Op = Ad | Sub | Mul | Div deriving Show
-
--- a :: Expr
--- a = Op Ad 1 2
-
--- parse :: IO ()
--- parse = print a
-
