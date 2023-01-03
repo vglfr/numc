@@ -10,7 +10,7 @@ data Expr
   | Expr :/ Expr
   | Fun Expr
   | Exe Expr Expr
-  deriving Show
+  deriving (Eq, Show)
 
 infixl 5 :+
 infixl 5 :-

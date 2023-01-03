@@ -1,15 +1,11 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Numc.Compiler where
-
-import Foreign.Ptr (FunPtr, castFunPtr)
 
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
   , Definition (GlobalDefinition)
-  , Module
   , Name (Name, UnName)
   , Named ((:=), Do)
   , Operand (ConstantOperand, LocalReference)
@@ -26,15 +22,8 @@ import LLVM.AST.Global (
 import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
 import LLVM.AST.Linkage (Linkage (External, Private))
 import LLVM.AST.Type (i8, i32, ptr, void)
-import LLVM.Context (withContext)
-import LLVM.ExecutionEngine (getFunction, withModuleInEngine)
-import LLVM.Module (withModuleFromAST)
 
 import Prelude hiding (putStrLn)
-
-import Numc.Codegen (jit)
-
-foreign import ccall "dynamic" mainFFI :: FunPtr (IO ()) -> IO ()
 
 fstr :: Definition
 fstr = GlobalDefinition globalVariableDefaults
@@ -42,7 +31,7 @@ fstr = GlobalDefinition globalVariableDefaults
     name = Name ".fstr"
   , linkage = Private
   , isConstant = True
-  , initializer = Just $ Array i8 [Int 8 37, Int 8 100] -- %d
+  , initializer = Just $ Array i8 [Int 8 37, Int 8 102] -- %f
   , type' = ArrayType 2 i8
   }
 
@@ -94,20 +83,6 @@ main' = GlobalDefinition functionDefaults
              []
     ]
     ( Do $ Ret Nothing [] )
-
-runMain :: Module -> IO ()
-runMain m = withContext $
-  \c -> jit c $
-    \e -> withModuleFromAST c m $
-      \m' -> withModuleInEngine e m' $
-        \e' -> do
-          mainfn <- getFunction e' (Name "main")
-          case mainfn of
-            Just f  -> mainFFI . castFunPtr $ f
-            Nothing -> error "fook"
-
--- evalMain :: IO ()
--- evalMain = runMain . toMod $ [fstr, printf, add, main']
 
 -- toObj :: AST.Module -> IO ()
 -- toObj ast = do
