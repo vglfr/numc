@@ -2,10 +2,15 @@
 
 module Numc.Compiler where
 
+import Prelude hiding (putStrLn)
+
+import qualified Control.Monad as M (void)
+import Data.ByteString.Char8 (putStrLn)
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
   , Definition (GlobalDefinition)
+  , Module
   , Name (Name, UnName)
   , Named ((:=), Do)
   , Operand (ConstantOperand, LocalReference)
@@ -21,9 +26,15 @@ import LLVM.AST.Global (
   )
 import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
 import LLVM.AST.Linkage (Linkage (External, Private))
-import LLVM.AST.Type (i8, i32, ptr, void)
+import LLVM.AST.Type (double, i8, i32, ptr, void)
+import LLVM.Context (withContext)
+import LLVM.Module (File (File), withModuleFromAST, writeObjectToFile)
+import LLVM.Target (withHostTargetMachineDefault)
 
-import Prelude hiding (putStrLn)
+import System.Process (readProcess)
+
+import Numc.Codegen (toList, toDef, toInstr, toMod, toIR)
+import Numc.Example (b2)
 
 fstr :: Definition
 fstr = GlobalDefinition globalVariableDefaults
@@ -67,9 +78,8 @@ main' = GlobalDefinition functionDefaults
         Call Nothing
              C
              []
-             (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType i32 [i32, i32] False) (Name "add"))
-             [ (ConstantOperand $ Int 32 0, [])
-             , (ConstantOperand $ Int 32 97, []) ]
+             (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType double [] False) (Name "eval"))
+             []
              []
              []
     , Do $
@@ -78,23 +88,24 @@ main' = GlobalDefinition functionDefaults
              []
              (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType i32 [ptr i8] True) (Name "printf"))
              [ (LocalReference (ptr i8) (UnName 1), [])
-             , (LocalReference      i32 (UnName 2), []) ]
+             , (LocalReference   double (UnName 2), []) ]
              []
              []
     ]
     ( Do $ Ret Nothing [] )
 
--- toObj :: AST.Module -> IO ()
--- toObj ast = do
---   withContext $ \ctx ->
---     withModuleFromAST ctx ast $ \llvm ->
---       withHostTargetMachineDefault $ \target -> do
---         writeObjectToFile target (File "bin/test.o") llvm
+toBin :: Module -> IO ()
+toBin m =
+  withContext $ \c ->
+    withModuleFromAST c m $ \m' ->
+      withHostTargetMachineDefault $ \t -> do
+        writeObjectToFile t (File "/tmp/numc.o") m'
+        M.void $ readProcess "gcc" ["/tmp/numc.o"] ""
 
--- toBin :: AST.Module -> IO ()
--- toBin ast = do
---   withContext $ \ctx ->
---     withModuleFromAST ctx ast $ \llvm ->
---       withHostTargetMachineDefault $ \target -> do
---         writeObjectToFile target (File "bin/test.o") llvm
---         void $ readProcess "gcc" ["bin/test.o", "-o", "bin/a.out"] ""
+printAST :: IO ()
+printAST = let es = toList b2
+            in (toIR . toMod . (\x -> [fstr, printf, x, main']) . toDef $ fmap (toInstr es) es) >>= putStrLn
+
+writeBin :: IO ()
+writeBin = let es = toList b2
+            in toBin . toMod . (\x -> [fstr, printf, x, main']) . toDef $ fmap (toInstr es) es

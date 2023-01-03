@@ -89,12 +89,12 @@ toDef is = GlobalDefinition functionDefaults
     is
     ( Do $ Ret (Just . LocalReference double . UnName . toEnum . subtract 1 $ length is) [] )
 
-toMod :: Definition -> Module
-toMod d = defaultModule
+toMod :: [Definition] -> Module
+toMod ds = defaultModule
   {
     moduleName = ""
   , moduleSourceFileName = ""
-  , moduleDefinitions = [d]
+  , moduleDefinitions = ds
   }
 
 toIR :: Module -> IO ByteString
@@ -113,8 +113,8 @@ runEval m = withContext $
 
 printAST :: IO ()
 printAST = let es = toList b2
-            in (toIR . toMod . toDef $ fmap (toInstr es) es) >>= putStrLn
+            in (toIR . toMod . pure . toDef $ fmap (toInstr es) es) >>= putStrLn
 
 evalRepl :: IO ()
 evalRepl = let es = toList b2
-            in (runEval . toMod . toDef $ fmap (toInstr es) es) >>= print
+            in (runEval . toMod . pure . toDef $ fmap (toInstr es) es) >>= print
