@@ -2,31 +2,27 @@ module Numc.Parser where
 
 import Prelude hiding (exponent)
 
-import Data.Functor ((<&>))
-import Text.Parsec (Parsec, char, choice, digit, many, many1, oneOf, string, try, (<|>))
+import Control.Applicative ((<|>))
+import Text.Trifecta (Parser, integerOrDouble, oneOf, parens, whiteSpace)
 
-import Numc.AST (Expr (Val))
--- import Numc.AST (Expr (Val, (:+), (:-), (:*), (:/)))
+import Numc.AST (Expr (Val, (:+), (:-), (:*), (:/)))
 
-parseExpr :: Parsec String () Expr
-parseExpr = try parseBin <|> try parseVal
+parseExpr :: Parser Expr
+parseExpr = parseBin <|> parseVal
 
-{-
-[+-]?\d+                    -- integer-like
-[+-]?\d*\.\d*([+-]?[eE]d+)? -- float-like
--}
+parseVal :: Parser Expr
+parseVal = Val . either fromInteger id <$> integerOrDouble
 
-parseVal :: Parsec String () Expr
-parseVal = Val . read <$> (sign <> number)
+parseBin :: Parser Expr
+parseBin = parens bin <|> bin
  where
-  sign = try (string "-") <|> try (char '+' *> mempty) <|> mempty
-  number = try float <|> int
-  float = choice [leftFloat, rightFloat] <> choice [exponent, mempty]
-  leftFloat = int <> string "." <> digitOrZero
-  rightFloat = digitOrZero <> string "." <> int
-  exponent = (pure <$> oneOf "eE") <> sign <> many1 digit
-  digitOrZero = many digit <&> \x -> if null x then "0" else x
-  int = many1 digit
-
-parseBin :: Parsec String () Expr
-parseBin = undefined
+  bin = do
+    a <- parseVal
+    o <- oneOf "+-*/" <* whiteSpace
+    b <- parseVal
+    pure $ case o of
+             '+' -> a :+ b
+             '-' -> a :- b
+             '*' -> a :* b
+             '/' -> a :/ b
+             _   -> error "absurd"
