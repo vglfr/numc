@@ -3,18 +3,22 @@ module Numc.Parser where
 import Prelude hiding (exponent)
 
 import Control.Applicative ((<|>))
-import Text.Trifecta (Parser, integerOrDouble, oneOf, parens, whiteSpace)
+import Text.Trifecta (Parser, integerOrDouble, oneOf, parens, try, whiteSpace)
 
 import Numc.AST (Expr (Val, (:+), (:-), (:*), (:/)))
 
 parseExpr :: Parser Expr
-parseExpr = parseBin <|> parseVal
+parseExpr = expr -- parens expr <|> expr
+ where
+  expr = try parseBin <|> parseVal
 
 parseVal :: Parser Expr
-parseVal = Val . either fromInteger id <$> integerOrDouble
+parseVal = Val . either fromInteger id <$> val
+ where
+  val = parens val <|> integerOrDouble
 
 parseBin :: Parser Expr
-parseBin = parens bin <|> bin
+parseBin = try (parens parseBin) <|> bin
  where
   bin = do
     a <- parseVal
