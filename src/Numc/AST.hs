@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-missing-methods #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Numc.AST where
 
@@ -19,3 +20,7 @@ infixl 6 :/
 
 instance Num Expr where
   fromInteger = Val . fromInteger
+  negate (Val a) = Val (negate a)
+
+instance Fractional Expr where
+  fromRational = Val . fromRational

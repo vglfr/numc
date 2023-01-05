@@ -19,7 +19,7 @@ common common
     , llvm-hs == 12.0.*
     , llvm-hs-pure == 12.0.*
     , process == 1.6.*
---    , parsec == 3.1.*
+    , parsec == 3.1.*
 
 library
   import:
@@ -29,10 +29,11 @@ library
     , Numc.Codegen
     , Numc.Compiler
     , Numc.Example
+    , Numc.Parser
   hs-source-dirs:
     src
 
-executable numc
+executable nc
   import:
     common
   build-depends:
@@ -42,7 +43,7 @@ executable numc
   main-is:
     Numc.hs
 
-executable numi
+executable ni
   import:
     common
   build-depends:
@@ -52,11 +53,12 @@ executable numi
   main-is:
     Numi.hs
 
-test-suite numc-test
+test-suite numc
   import:
     common
   build-depends:
-    numc
+      numc
+    , hspec == 2.8.*
   hs-source-dirs:
     test
   main-is:

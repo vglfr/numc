@@ -1,0 +1,4 @@
+ignore-project: False
+test-options: "--color"
+test-show-details: always
+tests: True

@@ -5,6 +5,12 @@ import Numc.AST (Expr ((:+), (:-), (:*), (:/)))
 v1 :: Expr
 v1 = 5
 
+v2 :: Expr
+v2 = 5.5
+
+v3 :: Expr
+v3 = -5
+
 {-
   +
  / \

@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:numc"
+
+    - path: "./app"
+      component: "numc:exe:nc"
+
+    - path: "./app"
+      component: "numc:exe:ni"
+
+    - path: "./test"
+      component: "numc:test:numc"
