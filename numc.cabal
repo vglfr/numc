@@ -59,9 +59,13 @@ test-suite numc
   build-depends:
       numc
     , hspec == 2.8.*
+    , QuickCheck == 2.14.*
   hs-source-dirs:
     test
   main-is:
     Main.hs
+  other-modules:
+      AST
+    , Parser
   type:
     exitcode-stdio-1.0
