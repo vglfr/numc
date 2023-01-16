@@ -3,12 +3,12 @@ module Numc.Parser where
 import Prelude hiding (exponent)
 
 import Control.Applicative ((<|>))
-import Text.Trifecta (Parser, chainl1, integerOrDouble, parens, symbol)
+import Text.Trifecta (Parser, Result, chainl1, eof, integerOrDouble, parens, parseString, symbol)
 
 import Numc.AST (Expr (Val, (:+), (:-), (:*), (:/)))
 
-parseExpr :: Parser Expr
-parseExpr = parseBin
+parseExpr :: String -> Result Expr
+parseExpr = parseString (parseBin <* eof) mempty
 
 parseBin :: Parser Expr
 parseBin = expr
