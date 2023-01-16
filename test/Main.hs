@@ -3,7 +3,7 @@ module Main where
 import Test.Hspec (Spec, describe, it, hspec, shouldBe)
 import Text.Trifecta (eof, foldResult, parseString)
 
--- import Numc.AST (Expr ((:+)))
+import Numc.AST (Expr ((:+)))
 import Numc.Example (b1, b2, b3, b4, v1, v2, v3)
 import Numc.Parser (parseBin, parseExpr, parseVal)
 
@@ -14,7 +14,7 @@ main = hspec $ do
   testParseVal
 
 testParseExpr :: Spec
-testParseExpr = describe "Numc.Parser - Expr" $ do
+testParseExpr = describe "Numc.Parser" $ do
   let parse = foldResult (const Nothing) Just . parseString (parseExpr <* eof) mempty
 
   it "parseExpr v1 (5)" $ do
@@ -23,14 +23,41 @@ testParseExpr = describe "Numc.Parser - Expr" $ do
   it "parseExpr 1 + 2" $ do
     parse "1 + 2" `shouldBe` Just b1
 
-  -- it "parseExpr (1 + 2) + (3 + 4)" $ do
-  --   parse "(1 + 2) + (3 + 4)" `shouldBe` Just ((1 :+ 2) :+ (3 :+ 4))
+  it "parseExpr (1 + 2)" $ do
+    parse "(1 + 2)" `shouldBe` Just b1
+
+  it "parseExpr ((1 + 2))" $ do
+    parse "((1 + 2))" `shouldBe` Just b1
+
+  it "parseExpr (((1 + 2)))" $ do
+    parse "(((1 + 2)))" `shouldBe` Just b1
+
+  it "parseExpr (1 + 2) + (3 + 4)" $ do
+    parse "(1 + 2) + (3 + 4)" `shouldBe` Just ((1 :+ 2) :+ (3 :+ 4))
+
+  it "parseExpr (1 + 2) + 3" $ do
+    parse "(1 + 2) + 3" `shouldBe` Just ((1 :+ 2) :+ 3)
+
+  it "parseExpr (1 + (2 + 3)) + 4" $ do
+    parse "(1 + (2 + 3)) + 4" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
+
+  it "parseExpr (1 + (2 + 3)) + ((4))" $ do
+    parse "(1 + (2 + 3)) + ((4))" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
+
+  it "parseExpr ((1 + 2) + 3)" $ do
+    parse "((1 + 2) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
+
+  it "parseExpr (((1 + 2)) + 3)" $ do
+    parse "(((1 + 2)) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
+
+  it "parseExpr (((1 + 2) + 3))" $ do
+    parse "(((1 + 2) + 3))" `shouldBe` Just ((1 :+ 2) :+ 3)
 
   -- it "parseExpr 1 + 2 + 3" $ do
   --   parse "1 + 2 + 3" `shouldBe` Just (1 :+ 2 :+ 3)
 
 testParseBin :: Spec
-testParseBin = describe "Numc.Parser - Bin" $ do
+testParseBin = describe "Numc.Parser" $ do
   let parse = foldResult (const Nothing) Just . parseString (parseBin <* eof) mempty
 
   it "parseBin 1 + 2" $ do
@@ -50,6 +77,12 @@ testParseBin = describe "Numc.Parser - Bin" $ do
 
   it "parseBin ( 1 + 2 )" $ do
     parse "( 1 + 2 )" `shouldBe` Just b1
+
+  it "parseBin ((1 + 2))" $ do
+    parse "((1 + 2))" `shouldBe` Just b1
+
+  it "parseBin (((1 + 2)))" $ do
+    parse "(((1 + 2)))" `shouldBe` Just b1
 
   it "parseBin (1+2)" $ do
     parse "(1+2)" `shouldBe` Just b1
@@ -94,7 +127,7 @@ testParseBin = describe "Numc.Parser - Bin" $ do
     parse "(1 + 2" `shouldBe` Nothing
 
 testParseVal :: Spec
-testParseVal = describe "Numc.Parser - Val" $ do
+testParseVal = describe "Numc.Parser" $ do
   let parse = foldResult (const Nothing) Just . parseString (parseVal <* eof) mempty
 
   it "parseVal v1 (5)" $ do
@@ -183,3 +216,6 @@ testParseVal = describe "Numc.Parser - Val" $ do
 
   it "parseVal .e5" $ do
     parse ".e5" `shouldBe` Nothing
+
+  it "parseVal (5 + 5)" $ do
+    parse "(5 + 5)" `shouldBe` Nothing
