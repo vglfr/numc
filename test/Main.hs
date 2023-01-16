@@ -3,62 +3,99 @@ module Main where
 import Test.Hspec (Spec, describe, it, hspec, shouldBe)
 import Text.Trifecta (eof, foldResult, parseString)
 
-import Numc.AST (Expr ((:+)))
+import Numc.AST (Expr ((:+), (:-), (:*), (:/)))
 import Numc.Example (b1, b2, b3, b4, v1, v2, v3)
-import Numc.Parser (parseBin, parseExpr, parseVal)
+import Numc.Parser (parseBin, parseVal)
 
 main :: IO ()
 main = hspec $ do
-  testParseExpr
+  -- testParseExpr
   testParseBin
   testParseVal
 
 testParseExpr :: Spec
 testParseExpr = describe "Numc.Parser" $ do
-  let parse = foldResult (const Nothing) Just . parseString (parseExpr <* eof) mempty
-
-  it "parseExpr v1 (5)" $ do
-    parse "5" `shouldBe` Just v1
-
-  it "parseExpr 1 + 2" $ do
-    parse "1 + 2" `shouldBe` Just b1
-
-  it "parseExpr (1 + 2)" $ do
-    parse "(1 + 2)" `shouldBe` Just b1
-
-  it "parseExpr ((1 + 2))" $ do
-    parse "((1 + 2))" `shouldBe` Just b1
-
-  it "parseExpr (((1 + 2)))" $ do
-    parse "(((1 + 2)))" `shouldBe` Just b1
-
-  it "parseExpr (1 + 2) + (3 + 4)" $ do
-    parse "(1 + 2) + (3 + 4)" `shouldBe` Just ((1 :+ 2) :+ (3 :+ 4))
-
-  it "parseExpr (1 + 2) + 3" $ do
-    parse "(1 + 2) + 3" `shouldBe` Just ((1 :+ 2) :+ 3)
-
-  it "parseExpr (1 + (2 + 3)) + 4" $ do
-    parse "(1 + (2 + 3)) + 4" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
-
-  it "parseExpr (1 + (2 + 3)) + ((4))" $ do
-    parse "(1 + (2 + 3)) + ((4))" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
-
-  it "parseExpr ((1 + 2) + 3)" $ do
-    parse "((1 + 2) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
-
-  it "parseExpr (((1 + 2)) + 3)" $ do
-    parse "(((1 + 2)) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
-
-  it "parseExpr (((1 + 2) + 3))" $ do
-    parse "(((1 + 2) + 3))" `shouldBe` Just ((1 :+ 2) :+ 3)
-
-  -- it "parseExpr 1 + 2 + 3" $ do
-  --   parse "1 + 2 + 3" `shouldBe` Just (1 :+ 2 :+ 3)
+  -- let parse = foldResult (const Nothing) Just . parseString (parseExpr <* eof) mempty
+  pure ()
 
 testParseBin :: Spec
 testParseBin = describe "Numc.Parser" $ do
   let parse = foldResult (const Nothing) Just . parseString (parseBin <* eof) mempty
+
+  it "parseBin v1 (5)" $ do
+    parse "5" `shouldBe` Just v1
+
+  it "parseBin ((1 + 2))" $ do
+    parse "((1 + 2))" `shouldBe` Just b1
+
+  it "parseBin (((1 + 2)))" $ do
+    parse "(((1 + 2)))" `shouldBe` Just b1
+
+  it "parseBin (1 + 2) " $ do
+    parse "(1 + 2) " `shouldBe` Just b1
+
+  it "parseBin (1 + 2 ) " $ do
+    parse "(1 + 2 ) " `shouldBe` Just b1
+
+  it "parseBin (1 + 2) + (3 + 4)" $ do
+    parse "(1 + 2) + (3 + 4)" `shouldBe` Just ((1 :+ 2) :+ (3 :+ 4))
+
+  it "parseBin (1 + 2) + 3" $ do
+    parse "(1 + 2) + 3" `shouldBe` Just ((1 :+ 2) :+ 3)
+
+  it "parseBin (1 + (2 + 3)) + 4" $ do
+    parse "(1 + (2 + 3)) + 4" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
+
+  it "parseBin (1 + (2 + 3)) + ((4))" $ do
+    parse "(1 + (2 + 3)) + ((4))" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
+
+  it "parseBin ((1 + 2) + 3)" $ do
+    parse "((1 + 2) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
+
+  it "parseBin (((1 + 2)) + 3)" $ do
+    parse "(((1 + 2)) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
+
+  it "parseBin (((1 + 2) + 3))" $ do
+    parse "(((1 + 2) + 3))" `shouldBe` Just ((1 :+ 2) :+ 3)
+
+  it "parseBin 1 + 2 + 3" $ do
+    parse "1 + 2 + 3" `shouldBe` Just (1 :+ 2 :+ 3)
+
+  it "parseBin 1 + 2 - 3" $ do
+    parse "1 + 2 - 3" `shouldBe` Just (1 :+ 2 :- 3)
+
+  it "parseBin 1 * 2 - 3" $ do
+    parse "1 * 2 - 3" `shouldBe` Just (1 :* 2 :- 3)
+
+  it "parseBin 1 * 2 / 3" $ do
+    parse "1 * 2 / 3" `shouldBe` Just (1 :* 2 :/ 3)
+
+  it "parseBin (1 + 2 + 3)" $ do
+    parse "(1 + 2 + 3)" `shouldBe` Just (1 :+ 2 :+ 3)
+
+  it "parseBin ((1 + 2 + 3))" $ do
+    parse "((1 + 2 + 3))" `shouldBe` Just (1 :+ 2 :+ 3)
+
+  it "parseBin (((1 + 2 + 3)))" $ do
+    parse "(((1 + 2 + 3)))" `shouldBe` Just (1 :+ 2 :+ 3)
+
+  it "parseBin (1 + 2) + 3" $ do
+    parse "(1 + 2) + 3" `shouldBe` Just (1 :+ 2 :+ 3)
+
+  it "parseBin 1 + (2 + 3)" $ do
+    parse "1 + (2 + 3)" `shouldBe` Just (1 :+ (2 :+ 3))
+
+  it "parseBin ((1 + 2) + 3)" $ do
+    parse "((1 + 2) + 3)" `shouldBe` Just (1 :+ 2 :+ 3)
+
+  it "parseBin (1 + (2 + 3))" $ do
+    parse "(1 + (2 + 3))" `shouldBe` Just (1 :+ (2 :+ 3))
+
+  it "parseBin ((((1 + 2)) + 3))" $ do
+    parse "((((1 + 2)) + 3))" `shouldBe` Just (1 :+ 2 :+ 3)
+
+  it "parseBin ((1 + ((2 + 3))))" $ do
+    parse "((1 + ((2 + 3))))" `shouldBe` Just (1 :+ (2 :+ 3))
 
   it "parseBin 1 + 2" $ do
     parse "1 + 2" `shouldBe` Just b1

@@ -18,6 +18,7 @@ in
       pkgs.haskell.compiler.ghc902
       pkgs.haskellPackages.hoogle
       pkgs.haskell-language-server
+      pkgs.libgccjit
       pkgs.llvmPackages_12.llvm
     ];
 
