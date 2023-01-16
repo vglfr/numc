@@ -2,10 +2,10 @@
 
 module Numc.Compiler where
 
-import Prelude hiding (putStrLn)
+import Prelude hiding (writeFile)
 
 import qualified Control.Monad as M (void)
-import Data.ByteString.Char8 (putStrLn)
+import Data.ByteString (ByteString, writeFile)
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
@@ -28,13 +28,13 @@ import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
 import LLVM.AST.Linkage (Linkage (External, Private))
 import LLVM.AST.Type (double, i8, i32, ptr, void)
 import LLVM.Context (withContext)
-import LLVM.Module (File (File), withModuleFromAST, writeObjectToFile)
+import LLVM.Module (File (File), moduleLLVMAssembly, withModuleFromAST, writeObjectToFile)
 import LLVM.Target (withHostTargetMachineDefault)
 
 import System.Process (readProcess)
 
-import Numc.Codegen (toList, toDef, toInstr, toMod, toIR)
-import Numc.Example (b2)
+import Numc.AST (Expr)
+import Numc.Codegen (toList, toDef, toInstr, toMod)
 
 fstr :: Definition
 fstr = GlobalDefinition globalVariableDefaults
@@ -94,18 +94,22 @@ main' = GlobalDefinition functionDefaults
     ]
     ( Do $ Ret Nothing [] )
 
-toBin :: Module -> IO ()
-toBin m =
+toLL :: Expr -> Module
+toLL e = let es = toList e
+          in toMod . addBoilerplate . toDef e $ fmap (toInstr es) es
+ where
+  addBoilerplate d = [fstr, printf, d, main']
+
+toIR :: Module -> IO ByteString
+toIR m = withContext $ \c -> withModuleFromAST c m moduleLLVMAssembly
+
+writeLL :: Module -> String -> IO ()
+writeLL m p = toIR m >>= writeFile p
+
+writeBin :: Module -> String -> IO ()
+writeBin m s =
   withContext $ \c ->
     withModuleFromAST c m $ \m' ->
       withHostTargetMachineDefault $ \t -> do
         writeObjectToFile t (File "/tmp/numc.o") m'
-        M.void $ readProcess "gcc" ["/tmp/numc.o"] ""
-
-printAST :: IO ()
-printAST = let es = toList b2
-            in (toIR . toMod . (\x -> [fstr, printf, x, main']) . toDef $ fmap (toInstr es) es) >>= putStrLn
-
-writeBin :: IO ()
-writeBin = let es = toList b2
-            in toBin . toMod . (\x -> [fstr, printf, x, main']) . toDef $ fmap (toInstr es) es
+        M.void $ readProcess "gcc" ["/tmp/numc.o", "-o", s] mempty

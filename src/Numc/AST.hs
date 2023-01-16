@@ -35,3 +35,10 @@ instance Num Expr where
 
 instance Fractional Expr where
   fromRational = Val . fromRational
+
+isVal :: Expr -> Bool
+isVal (Val _) = True
+isVal      _  = False
+
+val :: Expr -> Double
+val (Val x) = x

@@ -4,12 +4,14 @@
 + arithmetics (PEMDAS)
 + compile to LLVM
 + interpret (repl)
-
-- parser + printer
++ parser + printer
 
 - functions
-- conditionals
+
+- variables (in functions)
 - external functions
+- boolean types
+- conditionals
 
 - fX, iX, uX types
 

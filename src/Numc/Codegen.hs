@@ -5,8 +5,6 @@ module Numc.Codegen where
 
 import Prelude hiding (div, putStrLn)
 
-import Data.ByteString (ByteString)
-import Data.ByteString.Char8 (putStrLn)
 import Data.List (elemIndex)
 import Data.Maybe (fromJust)
 import Foreign.Ptr (FunPtr, castFunPtr)
@@ -33,10 +31,9 @@ import LLVM.AST.Global (basicBlocks, functionDefaults, name, parameters, returnT
 import LLVM.AST.Type (double)
 import LLVM.Context (withContext)
 import LLVM.ExecutionEngine (getFunction, withMCJIT, withModuleInEngine)
-import LLVM.Module (moduleLLVMAssembly, withModuleFromAST)
+import LLVM.Module (withModuleFromAST)
 
-import Numc.AST (Expr ((:+), (:-), (:*), (:/), Val))
-import Numc.Example (b2)
+import Numc.AST (Expr ((:+), (:-), (:*), (:/), Val), isVal, val)
 
 foreign import ccall "dynamic" evalFFI :: FunPtr (IO Double) -> IO Double
 
@@ -75,19 +72,23 @@ toInstr es e = case e of
   constVal = ConstantOperand . Float . Double
   localVal = LocalReference double . UnName . toEnum . fromJust
 
-toDef :: [Named Instruction] -> Definition
-toDef is = GlobalDefinition functionDefaults
+toDef :: Expr -> [Named Instruction] -> Definition
+toDef e is = GlobalDefinition functionDefaults
   {
     name = Name "eval"
   , parameters = ([], False)
   , returnType = double
-  , basicBlocks = [e1]
+  , basicBlocks = [if isVal e then e2 else e1]
   }
  where
   e1 = BasicBlock
     ( Name "" )
     is
     ( Do $ Ret (Just . LocalReference double . UnName . toEnum . subtract 1 $ length is) [] )
+  e2 = BasicBlock
+    ( Name "" )
+    is
+    ( Do $ Ret (Just . ConstantOperand . Float . Double $ val e) [] )
 
 toMod :: [Definition] -> Module
 toMod ds = defaultModule
@@ -96,9 +97,6 @@ toMod ds = defaultModule
   , moduleSourceFileName = ""
   , moduleDefinitions = ds
   }
-
-toIR :: Module -> IO ByteString
-toIR m = withContext $ \c -> withModuleFromAST c m moduleLLVMAssembly
 
 runEval :: Module -> IO Double
 runEval m = withContext $
@@ -111,10 +109,6 @@ runEval m = withContext $
             Just f  -> evalFFI . castFunPtr $ f
             Nothing -> error "fook"
 
-printAST :: IO ()
-printAST = let es = toList b2
-            in (toIR . toMod . pure . toDef $ fmap (toInstr es) es) >>= putStrLn
-
-evalRepl :: IO ()
-evalRepl = let es = toList b2
-            in (runEval . toMod . pure . toDef $ fmap (toInstr es) es) >>= print
+eval :: Expr -> IO Double
+eval e = let es = toList e
+          in runEval . toMod . pure . toDef e $ fmap (toInstr es) es
