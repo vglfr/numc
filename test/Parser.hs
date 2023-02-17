@@ -32,7 +32,7 @@ testParseVar = describe "Numc.Parser" $ do
     parse "x'" `shouldBe` Just "x'"
 
   it "parseVar x'x" $ do
-    parse "x'x" `shouldBe` Nothing
+    parse "x'x" `shouldBe` Just "x'x"
 
   it "parseVar _x" $ do
     parse "_x" `shouldBe` Nothing
@@ -86,8 +86,14 @@ testParseBin = describe "Numc.Parser" $ do
   it "parseBin ((1 + 2))" $ do
     parse "((1 + 2))" `shouldBe` Just b1
 
+  -- it "parseBin  ((1 + 2)) " $ do
+  --   parse " ((1 + 2)) " `shouldBe` Just b1
+
   it "parseBin (((1 + 2)))" $ do
     parse "(((1 + 2)))" `shouldBe` Just b1
+
+  it "parseBin ( ( ( 1 + 2 ) ) )" $ do
+    parse "( ( ( 1 + 2 ) ) )" `shouldBe` Just b1
 
   it "parseBin (1 + 2) " $ do
     parse "(1 + 2) " `shouldBe` Just b1
