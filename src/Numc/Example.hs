@@ -1,15 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Numc.Example where
 
-import Numc.AST (Expr ((:+), (:-), (:*), (:/)))
+import Numc.AST (Expr (Fun, (:+), (:-), (:*), (:/)))
 
-v1 :: Expr
-v1 = 5
+val1 :: Expr
+val1 = 5
 
-v2 :: Expr
-v2 = 5.5
+val2 :: Expr
+val2 = 5.5
 
-v3 :: Expr
-v3 = -5
+val3 :: Expr
+val3 = -5
 
 {-
   +
@@ -39,3 +41,12 @@ b4 = 1 :/ 2
 -}
 b20 :: Expr
 b20 = 5 :+ 1 :- 3 :+ 6 :* 2 :/ 4
+
+var1 :: Expr
+var1 = "x"
+
+{-
+f x = (x + x) * x
+-}
+f1 :: Expr
+f1 = Fun (pure "x") (("x" :+ "x") :* "x")

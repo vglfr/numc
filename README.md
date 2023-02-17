@@ -6,9 +6,13 @@
 + interpret (repl)
 + parser + printer
 
-- functions
+- variables
 
-- variables (in functions)
+- assignments
+
+- DataKinds
+
+- functions
 - external functions
 - boolean types
 - conditionals

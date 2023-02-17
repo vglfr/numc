@@ -3,14 +3,19 @@
 
 module Numc.AST where
 
+import Data.List.NonEmpty (NonEmpty)
+import Data.String (IsString, fromString)
+
 data Expr
   = Val Double
-  | Expr :+ Expr
+  | Expr :+ Expr -- Expr must not be :=
   | Expr :- Expr
   | Expr :* Expr
   | Expr :/ Expr
-  | Fun Expr
-  | Exe Expr Expr
+  | Var String
+  | Expr := Expr -- lhs must be Var; rhs must not be :=
+  | Fun (NonEmpty Expr) Expr -- Args must be Var; Body must be either Val or +-*/ or Var
+  | Exe Expr (NonEmpty Expr)
   deriving Eq
 
 infixl 5 :+
@@ -28,6 +33,7 @@ instance Show Expr where
                     x :- y -> showParen (n > 5) $ showsPrec 5 x . showString " - " . showsPrec 6 y
                     x :* y -> showParen (n > 6) $ showsPrec 6 x . showString " * " . showsPrec 7 y
                     x :/ y -> showParen (n > 6) $ showsPrec 6 x . showString " / " . showsPrec 7 y
+                    Var v -> shows v
 
 instance Num Expr where
   fromInteger = Val . fromInteger
@@ -35,6 +41,9 @@ instance Num Expr where
 
 instance Fractional Expr where
   fromRational = Val . fromRational
+
+instance IsString Expr where
+  fromString = Var
 
 isVal :: Expr -> Bool
 isVal (Val _) = True
