@@ -6,57 +6,15 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Trifecta (eof, foldResult, parseString)
 
 import Numc.AST (Expr ((:+), (:-), (:*), (:/)))
-import Numc.Example (b1, b2, b3, b4, val1, val2, val3, var1)
-import Numc.Parser (parseBin, parseVal, parseVar)
+import Numc.Example (a1, b1, b2, b3, b4, val1, val2, val3, var1)
+import Numc.Parser (parseAss, parseBin, parseVal, parseVar)
 
-testParseVar :: Spec
-testParseVar = describe "Numc.Parser" $ do
-  let parse = foldResult (const Nothing) Just . parseString (parseVar <* eof) mempty
+testParseAss :: Spec
+testParseAss = describe "Numc.Parser" $ do
+  let parse = foldResult (const Nothing) Just . parseString (parseAss <* eof) mempty
 
-  it "parseVar var1 x" $ do
-    parse "x" `shouldBe` Just var1
-
-  it "parseVar var1 (x)" $ do
-    parse "(x)" `shouldBe` Just var1
-
-  it "parseVar var1 ((x))" $ do
-    parse "((x))" `shouldBe` Just var1
-
-  it "parseVar var1 ( (x) )" $ do
-    parse "( (x) )" `shouldBe` Just var1
-
-  it "parseVar x1_X" $ do
-    parse "x1_X" `shouldBe` Just "x1_X"
-
-  it "parseVar x'" $ do
-    parse "x'" `shouldBe` Just "x'"
-
-  it "parseVar x'x" $ do
-    parse "x'x" `shouldBe` Just "x'x"
-
-  it "parseVar _x" $ do
-    parse "_x" `shouldBe` Nothing
-
-  it "parseVar X" $ do
-    parse "X" `shouldBe` Nothing
-
-  it "parseVar 'x" $ do
-    parse "'x" `shouldBe` Nothing
-
-  it "parseVar 1x" $ do
-    parse "1x" `shouldBe` Nothing
-
-  it "parseVar 1" $ do
-    parse "1" `shouldBe` Nothing
-
-  it "parseVar _" $ do
-    parse "_" `shouldBe` Nothing
-
-  it "parseVar '" $ do
-    parse "'" `shouldBe` Nothing
-
-  it "parseVar x+x" $ do
-    parse "x+x" `shouldBe` Nothing
+  it "parseAss a1 x = 5" $ do
+    parse "x = 5" `shouldBe` Just a1
 
 testParseBin :: Spec
 testParseBin = describe "Numc.Parser" $ do
@@ -65,29 +23,14 @@ testParseBin = describe "Numc.Parser" $ do
   it "parseBin val1 5" $ do
     parse "5" `shouldBe` Just val1
 
-  it "parseBin val1  5 " $ do
-    parse " 5 " `shouldBe` Just val1
-
-  it "parseBin  ( 5 ) " $ do
-    parse " ( 5 ) " `shouldBe` Just val1
-
   it "parseBin var1 x" $ do
     parse "x" `shouldBe` Just var1
-
-  it "parseBin var1  x " $ do
-    parse " x " `shouldBe` Just var1
 
   it "parseBin var1 (( x ))" $ do
     parse "(( x ))" `shouldBe` Just var1
 
-  it "parseBin var1  ( x ) " $ do
-    parse " ( x ) " `shouldBe` Just var1
-
   it "parseBin ((1 + 2))" $ do
     parse "((1 + 2))" `shouldBe` Just b1
-
-  -- it "parseBin  ((1 + 2)) " $ do
-  --   parse " ((1 + 2)) " `shouldBe` Just b1
 
   it "parseBin (((1 + 2)))" $ do
     parse "(((1 + 2)))" `shouldBe` Just b1
@@ -229,6 +172,55 @@ testParseBin = describe "Numc.Parser" $ do
 
   it "parseBin (1 + 2" $ do
     parse "(1 + 2" `shouldBe` Nothing
+
+testParseVar :: Spec
+testParseVar = describe "Numc.Parser" $ do
+  let parse = foldResult (const Nothing) Just . parseString (parseVar <* eof) mempty
+
+  it "parseVar var1 x" $ do
+    parse "x" `shouldBe` Just var1
+
+  it "parseVar var1 (x)" $ do
+    parse "(x)" `shouldBe` Just var1
+
+  it "parseVar var1 ((x))" $ do
+    parse "((x))" `shouldBe` Just var1
+
+  it "parseVar var1 ( (x) )" $ do
+    parse "( (x) )" `shouldBe` Just var1
+
+  it "parseVar x1_X" $ do
+    parse "x1_X" `shouldBe` Just "x1_X"
+
+  it "parseVar x'" $ do
+    parse "x'" `shouldBe` Just "x'"
+
+  it "parseVar x'x" $ do
+    parse "x'x" `shouldBe` Just "x'x"
+
+  it "parseVar _x" $ do
+    parse "_x" `shouldBe` Nothing
+
+  it "parseVar X" $ do
+    parse "X" `shouldBe` Nothing
+
+  it "parseVar 'x" $ do
+    parse "'x" `shouldBe` Nothing
+
+  it "parseVar 1x" $ do
+    parse "1x" `shouldBe` Nothing
+
+  it "parseVar 1" $ do
+    parse "1" `shouldBe` Nothing
+
+  it "parseVar _" $ do
+    parse "_" `shouldBe` Nothing
+
+  it "parseVar '" $ do
+    parse "'" `shouldBe` Nothing
+
+  it "parseVar x+x" $ do
+    parse "x+x" `shouldBe` Nothing
 
 testParseVal :: Spec
 testParseVal = describe "Numc.Parser" $ do

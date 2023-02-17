@@ -3,25 +3,31 @@ module Numc.Parser where
 import Control.Applicative ((<|>), Alternative (many))
 import Text.Trifecta (
     Parser, Result
-  , alphaNum, between, chainl1, char, eof, integerOrDouble, lower, parens, parseString, symbol, token, try, whiteSpace
+  , alphaNum, chainl1, char, eof, integerOrDouble, lower, parens, parseString, symbol, token, try
   )
 
-import Numc.AST (Expr ((:+), (:-), (:*), (:/), Val, Var))
+import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Val, Var))
 
 parseExpr :: String -> Result Expr
-parseExpr = parseString (whiteSpace *> parseBin <* eof) mempty
+parseExpr = parseString (parseBin <* eof) mempty
+
+parseAss :: Parser Expr
+parseAss = do
+  v <- parseVar 
+  _ <- token $ char '=' 
+  e <- parseBin
+  pure $ v := e
 
 parseBin :: Parser Expr
 parseBin = expr
  where
   expr = chainl1 term addop
   term = chainl1 fact mulop
-  fact = parens expr <|> ignoreSpace (try parseVal <|> parseVar)
+  fact = parens expr <|> try parseVal <|> parseVar
   addop = (:+) <$ symbol "+"
       <|> (:-) <$ symbol "-"
   mulop = (:*) <$ symbol "*"
       <|> (:/) <$ symbol "/"
-  ignoreSpace = between whiteSpace whiteSpace
 
 parseVar :: Parser Expr
 parseVar = Var <$> var

@@ -7,14 +7,14 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.String (IsString, fromString)
 
 data Expr
-  = Val Double
-  | Expr :+ Expr -- Expr must not be :=
+  = Var String
+  | Val Double
+  | Expr :+ Expr
   | Expr :- Expr
   | Expr :* Expr
   | Expr :/ Expr
-  | Var String
-  | Expr := Expr -- lhs must be Var; rhs must not be :=
-  | Fun (NonEmpty Expr) Expr -- Args must be Var; Body must be either Val or +-*/ or Var
+  | Expr := Expr
+  | Fun (NonEmpty Expr) Expr
   | Exe Expr (NonEmpty Expr)
   deriving Eq
 
@@ -22,9 +22,11 @@ infixl 5 :+
 infixl 5 :-
 infixl 6 :*
 infixl 6 :/
+infixl 1 :=
 
 instance Show Expr where
   showsPrec n e = case e of
+                    Var v -> shows v
                     Val v -> let i = round v
                               in if v == fromInteger i
                                  then shows i
@@ -33,7 +35,7 @@ instance Show Expr where
                     x :- y -> showParen (n > 5) $ showsPrec 5 x . showString " - " . showsPrec 6 y
                     x :* y -> showParen (n > 6) $ showsPrec 6 x . showString " * " . showsPrec 7 y
                     x :/ y -> showParen (n > 6) $ showsPrec 6 x . showString " / " . showsPrec 7 y
-                    Var v -> shows v
+                    x := y -> showParen (n > 1) $ showsPrec 1 x . showString " = " . showsPrec 2 y
 
 instance Num Expr where
   fromInteger = Val . fromInteger

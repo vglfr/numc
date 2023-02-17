@@ -2,7 +2,7 @@
 
 module Numc.Example where
 
-import Numc.AST (Expr (Fun, (:+), (:-), (:*), (:/)))
+import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Fun))
 
 val1 :: Expr
 val1 = 5
@@ -44,6 +44,9 @@ b20 = 5 :+ 1 :- 3 :+ 6 :* 2 :/ 4
 
 var1 :: Expr
 var1 = "x"
+
+a1 :: Expr
+a1 = "x" := 5
 
 {-
 f x = (x + x) * x
