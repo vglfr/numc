@@ -49,6 +49,9 @@ mul a b n = UnName n := FMul noFastMathFlags a b []
 div :: Operand -> Operand -> Word -> Named Instruction
 div a b n = UnName n := FDiv noFastMathFlags a b []
 
+toVar :: Expr
+toVar = undefined
+
 toList :: Expr -> [Expr]
 toList e = case e of
              a :+ b -> toList a <> toList b <> [e]

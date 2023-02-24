@@ -3,13 +3,16 @@ module Numc.Parser where
 import Control.Applicative ((<|>), Alternative (many))
 import Text.Trifecta (
     Parser, Result
-  , alphaNum, chainl1, char, eof, integerOrDouble, lower, parens, parseString, symbol, token, try
+  , alphaNum, chainl1, char, eof, integerOrDouble, lower, parens, parseString, semiSep, symbol, token, try
   )
 
 import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Val, Var))
 
-parseExpr :: String -> Result Expr
-parseExpr = parseString (parseBin <* eof) mempty
+parse :: String -> Result [Expr]
+parse = parseString parseFile mempty
+
+parseFile :: Parser [Expr]
+parseFile = semiSep (try parseAss <|> parseBin) <* eof
 
 parseAss :: Parser Expr
 parseAss = do
@@ -40,3 +43,9 @@ parseVal :: Parser Expr
 parseVal = Val . either fromInteger id <$> val
  where
   val = parens val <|> integerOrDouble
+
+
+
+
+parseExpr :: String -> Result Expr
+parseExpr = parseString (parseBin <* eof) mempty
