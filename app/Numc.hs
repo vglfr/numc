@@ -5,7 +5,8 @@ import System.Exit (die)
 import System.FilePath (takeBaseName)
 import Text.Trifecta (Result (Failure, Success))
 
-import Numc.Compiler (toLL, writeBin, writeLL)
+import Numc.Codegen (boilerplate, writeBin, writeLL)
+import Numc.Compiler (compile)
 import Numc.Parser (parse)
 
 main :: IO ()
@@ -15,10 +16,10 @@ main = do
          then die "Path to Num file needs to be provided as a first argument"
          else pure $ head as
   s <- readFile p
-  e <- case parse s of
-         Success e -> pure e
-         Failure e -> die $ show e
-  let o = toLL $ last e
-      f = "bin/" <> takeBaseName p
-  writeLL o (f <> ".ll")
-  writeBin o f
+  f <- case parse s of
+          Success e -> pure e
+          Failure e -> die $ show e
+  let o = boilerplate $ compile f
+      b = "bin/" <> takeBaseName p
+  writeLL o (b <> ".ll")
+  writeBin o b

@@ -1,117 +1,108 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Numc.Codegen where
 
-import Prelude hiding (div, putStrLn)
+import Prelude hiding (writeFile)
 
-import Data.List (elemIndex)
-import Data.Maybe (fromJust)
-import Foreign.Ptr (FunPtr, castFunPtr)
-
+import qualified Control.Monad as M (void)
+import Data.ByteString (writeFile)
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
   , Definition (GlobalDefinition)
-  , Instruction (FAdd, FDiv, FMul, FSub)
   , Module
   , Name (Name, UnName)
   , Named ((:=), Do)
   , Operand (ConstantOperand, LocalReference)
+  , Parameter (Parameter)
   , Terminator (Ret)
-  , defaultModule
-  , moduleDefinitions
-  , moduleName
-  , moduleSourceFileName
-  , noFastMathFlags
+  , Type (ArrayType, FunctionType)
   )
-import LLVM.AST.Constant (Constant (Float))
-import LLVM.AST.Float (SomeFloat (Double))
-import LLVM.AST.Global (basicBlocks, functionDefaults, name, parameters, returnType)
-import LLVM.AST.Type (double)
+import LLVM.AST.CallingConvention (CallingConvention (C))
+import LLVM.AST.Constant (Constant (Array, GlobalReference, Int))
+import LLVM.AST.Global (
+    basicBlocks, functionDefaults, globalVariableDefaults, initializer, isConstant, linkage, name, parameters
+  , returnType, type',
+  )
+import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
+import LLVM.AST.Linkage (Linkage (External, Private))
+import LLVM.AST.Type (double, i8, i32, ptr, void)
 import LLVM.Context (withContext)
-import LLVM.ExecutionEngine (getFunction, withMCJIT, withModuleInEngine)
-import LLVM.Module (withModuleFromAST)
+import LLVM.Module (File (File), moduleLLVMAssembly, withModuleFromAST, writeObjectToFile)
+import LLVM.Target (withHostTargetMachineDefault)
 
-import Numc.AST (Expr ((:+), (:-), (:*), (:/), Val), isVal, val)
+import System.Process (readProcess)
 
-foreign import ccall "dynamic" evalFFI :: FunPtr (IO Double) -> IO Double
-
-add :: Operand -> Operand -> Word -> Named Instruction
-add a b n = UnName n := FAdd noFastMathFlags a b []
-
-sub :: Operand -> Operand -> Word -> Named Instruction
-sub a b n = UnName n := FSub noFastMathFlags a b []
-
-mul :: Operand -> Operand -> Word -> Named Instruction
-mul a b n = UnName n := FMul noFastMathFlags a b []
-
-div :: Operand -> Operand -> Word -> Named Instruction
-div a b n = UnName n := FDiv noFastMathFlags a b []
-
-toVar :: Expr
-toVar = undefined
-
-toList :: Expr -> [Expr]
-toList e = case e of
-             a :+ b -> toList a <> toList b <> [e]
-             a :- b -> toList a <> toList b <> [e]
-             a :* b -> toList a <> toList b <> [e]
-             a :/ b -> toList a <> toList b <> [e]
-             Val _  -> []
-             _ -> error "fook"
-
-toInstr :: [Expr] -> Expr -> Named Instruction
-toInstr es e = case e of
-                 a :+ b -> add (getVal a) (getVal b) (toEnum . fromJust $ elemIndex e es)
-                 a :- b -> sub (getVal a) (getVal b) (toEnum . fromJust $ elemIndex e es)
-                 a :* b -> mul (getVal a) (getVal b) (toEnum . fromJust $ elemIndex e es)
-                 a :/ b -> div (getVal a) (getVal b) (toEnum . fromJust $ elemIndex e es)
-                 _ -> error "fook"
- where
-  getVal e' = case e' of
-                Val v -> constVal v
-                _     -> localVal $ elemIndex e' es
-  constVal = ConstantOperand . Float . Double
-  localVal = LocalReference double . UnName . toEnum . fromJust
-
-toDef :: Expr -> [Named Instruction] -> Definition
-toDef e is = GlobalDefinition functionDefaults
+fstr :: Definition
+fstr = GlobalDefinition globalVariableDefaults
   {
-    name = Name "eval"
-  , parameters = ([], False)
-  , returnType = double
-  , basicBlocks = [if isVal e then e2 else e1]
-  }
- where
-  e1 = BasicBlock
-    ( Name "" )
-    is
-    ( Do $ Ret (Just . LocalReference double . UnName . toEnum . subtract 1 $ length is) [] )
-  e2 = BasicBlock
-    ( Name "" )
-    is
-    ( Do $ Ret (Just . ConstantOperand . Float . Double $ val e) [] )
-
-toMod :: [Definition] -> Module
-toMod ds = defaultModule
-  {
-    moduleName = ""
-  , moduleSourceFileName = ""
-  , moduleDefinitions = ds
+    name = Name ".fstr"
+  , linkage = Private
+  , isConstant = True
+  , initializer = Just $ Array i8 [Int 8 37, Int 8 102] -- %f
+  , type' = ArrayType 2 i8
   }
 
-runEval :: Module -> IO Double
-runEval m = withContext $
-  \c -> withMCJIT c (Just 2) Nothing Nothing Nothing $
-    \e -> withModuleFromAST c m $
-      \m' -> withModuleInEngine e m' $
-        \e' -> do
-          eval' <- getFunction e' (Name "eval")
-          case eval' of
-            Just f  -> evalFFI . castFunPtr $ f
-            Nothing -> error "fook"
+printf :: Definition
+printf = GlobalDefinition functionDefaults
+  {
+    name = Name "printf"
+  , linkage = External
+  , parameters =
+    ( [ Parameter (ptr i8) (UnName 0) [] ]
+    , True )
+  , returnType = i32
+  , basicBlocks = []
+  }
 
-eval :: Expr -> IO Double
-eval e = let es = toList e
-          in runEval . toMod . pure . toDef e $ fmap (toInstr es) es
+main :: Definition
+main = GlobalDefinition functionDefaults
+  {
+    name = Name "main"
+  , returnType = void
+  , basicBlocks = [body]
+  }
+ where
+  body = BasicBlock
+    ( Name "" )
+    [ UnName 1 :=
+        GetElementPtr False
+                      (ConstantOperand $ GlobalReference (ptr $ ArrayType 2 i8) (Name ".fstr"))
+                      [ ConstantOperand $ Int 32 0
+                      , ConstantOperand $ Int 32 0 ]
+                      []
+    , UnName 2 :=
+        Call Nothing
+             C
+             []
+             (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType double [] False) (Name "eval"))
+             []
+             []
+             []
+    , Do $
+        Call Nothing
+             C
+             []
+             (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType i32 [ptr i8] True) (Name "printf"))
+             [ (LocalReference (ptr i8) (UnName 1), [])
+             , (LocalReference   double (UnName 2), []) ]
+             []
+             []
+    ]
+    ( Do $ Ret Nothing [] )
+
+boilerplate :: Module -> Module
+boilerplate = undefined -- [fstr, printf, d, main]
+
+writeLL :: Module -> String -> IO ()
+writeLL m p = toIR >>= writeFile p
+ where
+  toIR = withContext $ \c -> withModuleFromAST c m moduleLLVMAssembly
+
+writeBin :: Module -> String -> IO ()
+writeBin m s =
+  withContext $ \c ->
+    withModuleFromAST c m $ \m' ->
+      withHostTargetMachineDefault $ \t -> do
+        writeObjectToFile t (File "/tmp/numc.o") m'
+        M.void $ readProcess "gcc" ["/tmp/numc.o", "-o", s] mempty

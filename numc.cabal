@@ -29,6 +29,7 @@ library
       Numc.AST
     , Numc.Codegen
     , Numc.Compiler
+    , Numc.JIT
     , Numc.Example
     , Numc.Parser
   hs-source-dirs:
