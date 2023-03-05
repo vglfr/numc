@@ -5,12 +5,13 @@ module Numc.Codegen where
 import Prelude hiding (writeFile)
 
 import qualified Control.Monad as M (void)
+
 import Data.ByteString (writeFile)
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
   , Definition (GlobalDefinition)
-  , Module
+  , Module (moduleDefinitions)
   , Name (Name, UnName)
   , Named ((:=), Do)
   , Operand (ConstantOperand, LocalReference)
@@ -92,7 +93,7 @@ main = GlobalDefinition functionDefaults
     ( Do $ Ret Nothing [] )
 
 boilerplate :: Module -> Module
-boilerplate = undefined -- [fstr, printf, d, main]
+boilerplate m = m { moduleDefinitions = [fstr, printf] <> moduleDefinitions m <> [main] }
 
 writeLL :: Module -> String -> IO ()
 writeLL m p = toIR >>= writeFile p
