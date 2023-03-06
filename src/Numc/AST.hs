@@ -53,3 +53,6 @@ isVal      _  = False
 
 val :: Expr -> Double
 val (Val x) = x
+
+var :: Expr -> String
+var (Var x) = x

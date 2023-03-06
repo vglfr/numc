@@ -4,7 +4,7 @@ declare i32 @printf(i8*, ...)
 
 ; line 1
 ; x = 5
-@x = global double 0.0
+@x = private global double 0.0
 
 define void @f1() {
   %1 = load double, double* @x
@@ -22,7 +22,7 @@ define double @f2() {
 
 ; line 3
 ; y = x * 2
-@y = global double 0.0
+@y = private global double 0.0
 
 define void @f3() {
   %1 = load double, double* @x
