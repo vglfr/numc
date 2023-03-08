@@ -7,11 +7,9 @@ import Prelude hiding (div, mod, putStrLn)
 
 import Data.List (elemIndex)
 import Data.Maybe (fromJust)
-import Data.String (fromString)
 
 import qualified LLVM.AST (Named ((:=)))
 
-import Data.ByteString.Short (ShortByteString, toShort)
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
@@ -38,17 +36,17 @@ import LLVM.AST.Global (
     basicBlocks, functionDefaults, globalVariableDefaults, initializer, isConstant, linkage, name, parameters
   , returnType, type'
   )
-import LLVM.AST.Instruction (Instruction (Call, Store))
+import LLVM.AST.Instruction (Instruction (Call, Load, Store))
 import LLVM.AST.Linkage (Linkage (Private))
 import LLVM.AST.Type (double, ptr, void)
 
-import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Val), isVal, val, var)
+import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Val, Var), isVal, val, var)
 
 index :: (Eq a, Enum b) => a -> [a] -> b
 index x xs = toEnum . fromJust $ elemIndex x xs
 
-fname :: Show a => a -> ShortByteString
-fname n = "f" <> (toShort . fromString . show $ n)
+fname :: Show a => a -> Name
+fname n = mkName $ "f" <> show n
 
 isF :: Definition -> Bool
 isF d = case d of
@@ -60,23 +58,13 @@ getF d = case d of
            GlobalDefinition f@(Function {}) -> f
            _ -> error "fook"
 
-variableD :: Expr -> Expr -> Definition
-variableD s v = GlobalDefinition globalVariableDefaults
+global :: Expr -> Expr -> Definition
+global v e = GlobalDefinition globalVariableDefaults
   {
-    name = mkName . var $ s
+    name = mkName . var $ v
   , linkage = Private
   , isConstant = False
-  , initializer = Just . Float . Double $ val v
-  , type' = double
-  }
-
-variableU :: Expr -> Definition
-variableU s = GlobalDefinition globalVariableDefaults
-  {
-    name = mkName . var $ s
-  , linkage = Private
-  , isConstant = False
-  , initializer = Just $ Float $ Double 0
+  , initializer = Just . Float . Double $ if isVal e then val e else 0
   , type' = double
   }
 
@@ -102,37 +90,28 @@ call d n = let t = returnType . getF $ d
   function t = Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType t [] False) (getName d)
   getName = name . getF
 
-store :: Named Instruction -> Expr -> Named Instruction
-store i e = Do $ Store False (to e) (from i) Nothing 0 []
+store :: Int -> Expr -> Named Instruction
+store n e = Do $ Store False (to e) (from n) Nothing 0 []
  where
   to = ConstantOperand . GlobalReference (ptr double) . mkName . var
-  from (n LLVM.AST.:= _) = LocalReference double n
+  from = LocalReference double . UnName . toEnum
 
-defineA :: Expr -> Int -> [Named Instruction] -> Definition
-defineA v n is = GlobalDefinition functionDefaults
-  {
-    name = Name $ fname (n + 1)
-  , parameters = ([], False)
-  , returnType = void
-  , basicBlocks = pure $ BasicBlock (Name "") (is <> pure (store (last is) v)) (Do $ Ret Nothing [])
-  }
+load :: Expr -> Word -> Named Instruction
+load e n = UnName n LLVM.AST.:= Load False (ConstantOperand . GlobalReference (ptr double) . mkName . var $ e) Nothing 0 []
 
-defineB :: Expr -> Int -> [Named Instruction] -> Definition
-defineB e n is = GlobalDefinition functionDefaults
+define :: Name -> Type -> [Named Instruction] -> Maybe Operand -> Definition
+define n r is t = GlobalDefinition functionDefaults
   {
-    name = Name $ fname (n + 1)
+    name = n
   , parameters = ([], False)
-  , returnType = double
-  , basicBlocks = pure $ BasicBlock (Name "") is (if isVal e then e2 else e1)
+  , returnType = r
+  , basicBlocks = pure $ BasicBlock (Name "") is (Do $ Ret t [])
   }
- where
-  e1 = Do $ Ret (Just . LocalReference double . UnName . toEnum . subtract 1 $ length is) []
-  e2 = Do $ Ret (Just . ConstantOperand . Float . Double $ val e) []
 
 eval :: [Definition] -> Definition
 eval ds = GlobalDefinition functionDefaults
   {
-    name = Name "eval"
+    name = mkName "eval"
   , parameters = ([], False)
   , returnType = double
   , basicBlocks = pure $ BasicBlock (Name "") is e
@@ -148,6 +127,8 @@ toList e = case e of
              a :- b -> toList a <> toList b <> [e]
              a :* b -> toList a <> toList b <> [e]
              a :/ b -> toList a <> toList b <> [e]
+             _ := b ->             toList b <> [e]
+             Var _  -> [e]
              Val _  -> []
              _ -> error "fook"
 
@@ -159,6 +140,8 @@ instrs es = fmap instr es
               a :- b -> sub (getVal a) (getVal b) (index e es)
               a :* b -> mul (getVal a) (getVal b) (index e es)
               a :/ b -> div (getVal a) (getVal b) (index e es)
+              a := _ -> store (index e es - 1) a
+              Var _  -> load e (index e es)
               _ -> error "fook"
   getVal e = case e of
                Val v -> constVal v
@@ -167,15 +150,18 @@ instrs es = fmap instr es
   localVal = LocalReference double . UnName
 
 ass :: Expr -> Int -> [Definition]
-ass e n = case e of
-            v := e' -> if isVal e'
-                       then pure $ variableD v e'
-                       else [variableU v, defineA v n $ instrs (toList e')]
-            _ -> error "fook"
+ass e@(v := w) n = let m  = fname (n + 1)
+                       is = instrs . toList $ e
+                       t  = Nothing
+                    in global v w : [define m void is t | not $ isVal w]
 
 bin :: Expr -> Int -> Definition
-bin e n = let es = toList e
-           in defineB e n $ instrs es
+bin e n = let m  = fname (n + 1)
+              is = instrs . toList $ e
+              t  = Just $ if isVal e
+                          then ConstantOperand . Float . Double $ val e
+                          else LocalReference double . UnName . toEnum . subtract 1 $ length is
+           in define m double is t
 
 mod :: [[Definition]] -> Module
 mod ds = defaultModule
@@ -195,4 +181,6 @@ compile es = mod . fmap compileLine $ es
                         _ :* _ -> pure $ bin e n
                         _ :/ _ -> pure $ bin e n
                         _ := _ -> ass e n
+                        -- Val _  -> undefined
+                        -- Var _  -> undefined
                         _ -> error "fook"
