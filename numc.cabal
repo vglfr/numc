@@ -68,6 +68,7 @@ test-suite numc
     Main.hs
   other-modules:
       AST
+    , Compiler
     , Parser
   type:
     exitcode-stdio-1.0

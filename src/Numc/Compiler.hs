@@ -6,6 +6,7 @@ module Numc.Compiler where
 
 import Prelude hiding (div, mod, putStrLn)
 
+import Data.ByteString (ByteString)
 import Data.ByteString.Short (unpack)
 import Data.List (elemIndex)
 import Data.Maybe (fromJust)
@@ -39,6 +40,9 @@ import LLVM.AST.Global (
   )
 import LLVM.AST.Instruction (Instruction (Call, Load, Store))
 import LLVM.AST.Type (double, ptr, void)
+
+import LLVM.Internal.Context (withContext)
+import LLVM.Internal.Module (withModuleFromAST, moduleLLVMAssembly)
 
 import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Val, Var), isVal, val, var)
 
@@ -183,3 +187,6 @@ compile es = mod . concatMap compileLine $ es
                         -- Val _  -> undefined
                         -- Var _  -> undefined
                         _ -> error "fook"
+
+ir :: Module -> IO ByteString
+ir m = withContext $ \c -> withModuleFromAST c m moduleLLVMAssembly
