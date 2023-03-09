@@ -3,10 +3,10 @@ module Main where
 import System.Environment (getArgs)
 import System.Exit (die)
 import System.FilePath (takeBaseName)
+import System.Process (readProcess)
 import Text.Trifecta (Result (Failure, Success))
 
-import Numc.Codegen (writeLL)
--- import Numc.Codegen (boilerplate, writeBin, writeLL)
+import Numc.Codegen (boilerplate, writeBin, writeLL)
 import Numc.Compiler (compile)
 import Numc.Parser (parse)
 
@@ -20,8 +20,11 @@ main = do
   f <- case parse s of
           Success e -> pure e
           Failure e -> die $ show e
-  let o = compile f
-  -- let o = boilerplate $ compile f
-      b = "bin/" <> takeBaseName p
-  writeLL o (b <> ".ll")
-  -- writeBin o b
+  let o = boilerplate $ compile f
+      b = takeBaseName p
+  writeLL  o ("ll/" <> b <> ".ll")
+  writeBin o ("bin/" <> b)
+
+  readProcess "bat" [p] mempty >>= putStrLn . ("---\n" <>) . init
+  readProcess "bat" ["--color=always", "ll/" <> b <> ".ll"] mempty >>= putStrLn . ("---" <>) . init
+  readProcess ("./bin/" <> b) [] mempty >>= putStrLn . ("---\n" <>) . (<> "\n---")

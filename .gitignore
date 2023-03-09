@@ -2,4 +2,7 @@
 dist-newstyle/
 
 bin/*
-!bin/.gitignore
+!bin/.gitkeep
+
+ll/*
+!ll/.gitkeep

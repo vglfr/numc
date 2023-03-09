@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Numc.Compiler where
 
 import Prelude hiding (div, mod, putStrLn)
 
+import Data.ByteString.Short (unpack)
 import Data.List (elemIndex)
 import Data.Maybe (fromJust)
 
@@ -33,11 +35,9 @@ import LLVM.AST.CallingConvention (CallingConvention (C))
 import LLVM.AST.Constant (Constant (Float, GlobalReference))
 import LLVM.AST.Float (SomeFloat (Double))
 import LLVM.AST.Global (
-    basicBlocks, functionDefaults, globalVariableDefaults, initializer, isConstant, linkage, name, parameters
-  , returnType, type'
+    basicBlocks, functionDefaults, globalVariableDefaults, initializer, name, returnType, type'
   )
 import LLVM.AST.Instruction (Instruction (Call, Load, Store))
-import LLVM.AST.Linkage (Linkage (Private))
 import LLVM.AST.Type (double, ptr, void)
 
 import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Val, Var), isVal, val, var)
@@ -54,16 +54,12 @@ isF d = case d of
           _ -> False
 
 getF :: Definition -> Global
-getF d = case d of
-           GlobalDefinition f@(Function {}) -> f
-           _ -> error "fook"
+getF (GlobalDefinition f@(Function {})) = f
 
 global :: Expr -> Expr -> Definition
 global v e = GlobalDefinition globalVariableDefaults
   {
     name = mkName . var $ v
-  , linkage = Private
-  , isConstant = False
   , initializer = Just . Float . Double $ if isVal e then val e else 0
   , type' = double
   }
@@ -80,15 +76,17 @@ mul a b n = UnName n LLVM.AST.:= FMul noFastMathFlags a b []
 div :: Operand -> Operand -> Word -> Named Instruction
 div a b n = UnName n LLVM.AST.:= FDiv noFastMathFlags a b []
 
-call :: Definition -> Word -> Named Instruction
-call d n = let t = returnType . getF $ d
-            in case t of
-                 FloatingPointType _ -> UnName n LLVM.AST.:= Call Nothing C [] (function t) [] [] []
-                 VoidType -> Do $ Call Nothing C [] (function t) [] [] []
-                 _ -> error "fook"
+call :: Definition -> Named Instruction
+call d = let f = getF d
+             t = returnType f
+             n = name f
+             v = case n of
+                   Name n' -> fromIntegral . last . unpack $ n'
+          in case t of
+               FloatingPointType _ -> UnName v LLVM.AST.:= Call Nothing C [] (function t n) [] [] []
+               VoidType -> Do $ Call Nothing C [] (function t n) [] [] []
  where
-  function t = Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType t [] False) (getName d)
-  getName = name . getF
+  function t n = Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType t [] False) n
 
 store :: Int -> Expr -> Named Instruction
 store n e = Do $ Store False (to e) (from n) Nothing 0 []
@@ -103,7 +101,6 @@ define :: Name -> Type -> [Named Instruction] -> Maybe Operand -> Definition
 define n r is t = GlobalDefinition functionDefaults
   {
     name = n
-  , parameters = ([], False)
   , returnType = r
   , basicBlocks = pure $ BasicBlock (Name "") is (Do $ Ret t [])
   }
@@ -112,14 +109,16 @@ eval :: [Definition] -> Definition
 eval ds = GlobalDefinition functionDefaults
   {
     name = mkName "eval"
-  , parameters = ([], False)
-  , returnType = double
-  , basicBlocks = pure $ BasicBlock (Name "") is e
+  , returnType = t
+  , basicBlocks = pure $ BasicBlock (Name "") is (Do $ Ret r [])
   }
  where
-  fs = filter isF ds
-  is = uncurry call <$> zip fs (toEnum <$> tail [0..length fs])
-  e = Do $ Ret (Just . LocalReference double . UnName . toEnum $ length fs) []
+  is = call <$> filter isF ds
+  (t, r)
+    | null is   = (void, Nothing)
+    | otherwise = case last is of
+                    (UnName n LLVM.AST.:= _) -> (double, Just . LocalReference double . UnName $ n)
+                    _ -> (void, Nothing)
 
 toList :: Expr -> [Expr]
 toList e = case e of
@@ -163,16 +162,16 @@ bin e n = let m  = fname (n + 1)
                           else LocalReference double . UnName . toEnum . subtract 1 $ length is
            in define m double is t
 
-mod :: [[Definition]] -> Module
+mod :: [Definition] -> Module
 mod ds = defaultModule
   {
-    moduleName = ""
+    moduleName = "mn\nff"
   , moduleSourceFileName = ""
-  , moduleDefinitions = concat ds -- <> pure (eval ds)
+  , moduleDefinitions = ds <> pure (eval ds)
   }
 
 compile :: [Expr] -> Module
-compile es = mod . fmap compileLine $ es
+compile es = mod . concatMap compileLine $ es
  where
   compileLine e = let n = index e es
                    in case e of
