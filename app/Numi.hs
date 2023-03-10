@@ -9,7 +9,7 @@ import Text.Trifecta (Result (Failure, Success))
 
 import Numc.AST (Expr)
 import Numc.Compiler (compile)
-import Numc.JIT (context, jit)
+import Numc.JIT (jit)
 import Numc.Parser (parse)
 
 main :: IO [Expr]
@@ -20,8 +20,8 @@ main = main' []
     f <- case parse s of
            Success e -> pure e
            Failure e -> print e >> main' c
-    let o  = context (compile f) c
-        c' = undefined
-    jit o >>= print >> main' c'
+    let o  = compile (c <> f)
+        -- c' = undefined
+    jit o >>= putStrLn >> main' c
   ps1 = putStr "> " >> hFlush stdout
   handleEOF = either (const exitSuccess) pure

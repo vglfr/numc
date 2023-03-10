@@ -151,6 +151,9 @@ instrs es = fmap instr es
   constVal = ConstantOperand . Float . Double
   localVal = LocalReference double . UnName
 
+variable :: Expr -> Int -> Definition
+variable e n = define (fname n) double [load e 0] (Just $ LocalReference double $ UnName 0)
+
 ass :: Expr -> Int -> [Definition]
 ass e@(v := w) n = let m  = fname (n + 1)
                        is = instrs . toList $ e
@@ -184,7 +187,7 @@ compile es = mod . nub . concatMap compileLine $ es
                         _ :/ _ -> pure $ bin e n
                         _ := _ -> ass e n
                         Val _  -> pure $ bin e n
-                        -- Var _  -> undefined
+                        Var _  -> pure $ variable e n
                         _ -> error "fook"
 
 ir :: Module -> IO ByteString
