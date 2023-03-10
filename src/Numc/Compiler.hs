@@ -7,7 +7,7 @@ import Prelude hiding (div, mod, putStrLn)
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Short (unpack)
-import Data.List (elemIndex)
+import Data.List (elemIndex, nub)
 import Data.Maybe (fromJust)
 
 import qualified LLVM.AST (Named ((:=)))
@@ -168,13 +168,13 @@ bin e n = let m  = fname (n + 1)
 mod :: [Definition] -> Module
 mod ds = defaultModule
   {
-    moduleName = "mn\nff"
+    moduleName = ""
   , moduleSourceFileName = ""
   , moduleDefinitions = ds <> pure (eval ds)
   }
 
 compile :: [Expr] -> Module
-compile es = mod . concatMap compileLine $ es
+compile es = mod . nub . concatMap compileLine $ es
  where
   compileLine e = let n = index e es
                    in case e of

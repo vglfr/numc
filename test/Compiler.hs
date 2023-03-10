@@ -6,7 +6,7 @@ import Data.ByteString (pack, readFile, unpack)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Numc.Compiler (compile, ir)
-import Numc.Example (a1, a2, b1, b2, b3, b4, m1, m2, m3, m4, m5, b20, val1, val2, val3, var1)
+import Numc.Example (a1, a2, b1, b2, b3, b4, m1, m2, m3, m4, m5, m6, b20, val1, val2, val3, var1)
 
 testCompile :: Spec
 testCompile = describe "Numc.Compiler" $ do
@@ -91,4 +91,9 @@ testCompile = describe "Numc.Compiler" $ do
   it "compileMultiline m5 x = 5; x * 2" $ do
     i <- compile' m5
     o <- readFile "test/output/m5.ll"
+    i `shouldBe` o
+
+  it "compileMultiline m6 x = 5 + 3; x = x * 2; x / 5" $ do
+    i <- compile' m6
+    o <- readFile "test/output/m6.ll"
     i `shouldBe` o
