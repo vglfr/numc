@@ -3,14 +3,13 @@ module Main where
 import Test.Hspec (hspec)
 
 import AST (testReadShow)
-import Compiler (testCompileBin, testCompileVal)
+import Compiler (testCompile)
 import Parser (testParseAss, testParseBin, testParseVal, testParseVar)
 
 main :: IO ()
 main = do
   hspec $ do
-    testCompileBin
-    testCompileVal
+    testCompile
     testParseAss
     testParseBin
     testParseVar

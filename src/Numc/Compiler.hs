@@ -1,6 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Numc.Compiler where
 
@@ -184,7 +183,7 @@ compile es = mod . concatMap compileLine $ es
                         _ :* _ -> pure $ bin e n
                         _ :/ _ -> pure $ bin e n
                         _ := _ -> ass e n
-                        -- Val _  -> undefined
+                        Val _  -> pure $ bin e n
                         -- Var _  -> undefined
                         _ -> error "fook"
 
