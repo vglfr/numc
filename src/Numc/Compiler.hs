@@ -6,8 +6,10 @@ module Numc.Compiler where
 import Prelude hiding (div, mod, putStrLn)
 
 import Data.ByteString (ByteString)
+-- import Data.ByteString.Internal (unpackChars)
+-- import Data.ByteString.Short (fromShort, unpack)
 import Data.ByteString.Short (unpack)
-import Data.List (elemIndex, nub)
+import Data.List (elemIndex, nub, find)
 import Data.Maybe (fromJust)
 
 import qualified LLVM.AST (Named ((:=)))
@@ -17,7 +19,7 @@ import LLVM.AST
     BasicBlock (BasicBlock)
   , Definition (GlobalDefinition)
   , Global (Function)
-  , Instruction (FAdd, FDiv, FMul, FSub)
+  , Instruction (FAdd, FDiv, FMul, FSub, GetElementPtr)
   , Module
   , Name (Name, UnName)
   , Named (Do)
@@ -32,7 +34,7 @@ import LLVM.AST
   , noFastMathFlags
   )
 import LLVM.AST.CallingConvention (CallingConvention (C))
-import LLVM.AST.Constant (Constant (Float, GlobalReference))
+import LLVM.AST.Constant (Constant (Float, GlobalReference, Int))
 import LLVM.AST.Float (SomeFloat (Double))
 import LLVM.AST.Global (
     basicBlocks, functionDefaults, globalVariableDefaults, initializer, name, returnType, type'
@@ -56,8 +58,13 @@ isF d = case d of
           GlobalDefinition (Function {}) -> True
           _ -> False
 
-getF :: Definition -> Global
-getF (GlobalDefinition f@(Function {})) = f
+-- vars :: Module -> [Expr]
+-- vars = fmap (expr . name . getInner) . filter (not . isF) . moduleDefinitions
+--  where
+--   expr (Name n) = Var . unpackChars . fromShort $ n
+
+getInner :: Definition -> Global
+getInner (GlobalDefinition x) = x
 
 global :: Expr -> Expr -> Definition
 global v e = GlobalDefinition globalVariableDefaults
@@ -67,38 +74,49 @@ global v e = GlobalDefinition globalVariableDefaults
   , type' = double
   }
 
-add :: Operand -> Operand -> Word -> Named Instruction
-add a b n = UnName n LLVM.AST.:= FAdd noFastMathFlags a b []
+fadd :: Operand -> Operand -> Instruction
+fadd a b = FAdd noFastMathFlags a b []
 
-sub :: Operand -> Operand -> Word -> Named Instruction
-sub a b n = UnName n LLVM.AST.:= FSub noFastMathFlags a b []
+fsub :: Operand -> Operand -> Instruction
+fsub a b = FSub noFastMathFlags a b []
 
-mul :: Operand -> Operand -> Word -> Named Instruction
-mul a b n = UnName n LLVM.AST.:= FMul noFastMathFlags a b []
+fmul :: Operand -> Operand -> Instruction
+fmul a b = FMul noFastMathFlags a b []
 
-div :: Operand -> Operand -> Word -> Named Instruction
-div a b n = UnName n LLVM.AST.:= FDiv noFastMathFlags a b []
+fdiv :: Operand -> Operand -> Instruction
+fdiv a b = FDiv noFastMathFlags a b []
+
+fptr :: Type -> [Type] -> Name -> Operand
+fptr t ts n = ConstantOperand $ GlobalReference (ptr $ FunctionType t ts False) n
+
+gref :: String -> Operand
+gref = ConstantOperand . GlobalReference (ptr double) . mkName
+
+lref :: Word -> Operand
+lref = LocalReference double . UnName
 
 call :: Definition -> Named Instruction
-call d = let f = getF d
+call d = let f = getInner d
              t = returnType f
              n = name f
              v = case n of
                    Name n' -> fromIntegral . last . unpack $ n'
           in case t of
-               FloatingPointType _ -> UnName v LLVM.AST.:= Call Nothing C [] (function t n) [] [] []
-               VoidType -> Do $ Call Nothing C [] (function t n) [] [] []
- where
-  function t n = Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType t [] False) n
+               FloatingPointType _ -> UnName v LLVM.AST.:= Call Nothing C [] (Right $ fptr t [] n) [] [] []
+               VoidType -> Do $ Call Nothing C [] (Right $ fptr t [] n) [] [] []
 
-store :: Int -> Expr -> Named Instruction
-store n e = Do $ Store False (to e) (from n) Nothing 0 []
- where
-  to = ConstantOperand . GlobalReference (ptr double) . mkName . var
-  from = LocalReference double . UnName . toEnum
+store :: String -> Word -> Instruction
+store g l = Store False (gref g) (lref l) Nothing 0 []
 
-load :: Expr -> Word -> Named Instruction
-load e n = UnName n LLVM.AST.:= Load False (ConstantOperand . GlobalReference (ptr double) . mkName . var $ e) Nothing 0 []
+load :: String -> Instruction
+load n = Load False (gref n) Nothing 0 []
+
+getelementptr :: Type -> String -> Integer -> Instruction
+getelementptr t n o = GetElementPtr
+                        False
+                        (ConstantOperand $ GlobalReference (ptr t) (mkName n))
+                        [ConstantOperand $ Int 32 0, ConstantOperand $ Int 32 o]
+                        []
 
 define :: Name -> Type -> [Named Instruction] -> Maybe Operand -> Definition
 define n r is t = GlobalDefinition functionDefaults
@@ -120,7 +138,7 @@ eval ds = GlobalDefinition functionDefaults
   (t, r)
     | null is   = (void, Nothing)
     | otherwise = case last is of
-                    (UnName n LLVM.AST.:= _) -> (double, Just . LocalReference double . UnName $ n)
+                    (UnName n LLVM.AST.:= _) -> (double, Just $ lref n)
                     _ -> (void, Nothing)
 
 toList :: Expr -> [Expr]
@@ -137,22 +155,22 @@ toList e = case e of
 instrs :: [Expr] -> [Named Instruction]
 instrs es = fmap instr es
  where
-  instr e = case e of
-              a :+ b -> add (getVal a) (getVal b) (index e es)
-              a :- b -> sub (getVal a) (getVal b) (index e es)
-              a :* b -> mul (getVal a) (getVal b) (index e es)
-              a :/ b -> div (getVal a) (getVal b) (index e es)
-              a := _ -> store (index e es - 1) a
-              Var _  -> load e (index e es)
-              _ -> error "fook"
+  instr e = let n = index e es
+             in case e of
+                  a :+ b -> UnName n LLVM.AST.:= fadd (getVal a) (getVal b)
+                  a :- b -> UnName n LLVM.AST.:= fsub (getVal a) (getVal b)
+                  a :* b -> UnName n LLVM.AST.:= fmul (getVal a) (getVal b)
+                  a :/ b -> UnName n LLVM.AST.:= fdiv (getVal a) (getVal b)
+                  a := _ -> Do $ store (var a) (n - 1)
+                  Var _  -> UnName n LLVM.AST.:= load (var e)
+                  _ -> error "fook"
   getVal e = case e of
                Val v -> constVal v
-               _     -> localVal $ index e es
+               _     -> lref $ index e es
   constVal = ConstantOperand . Float . Double
-  localVal = LocalReference double . UnName
 
 variable :: Expr -> Int -> Definition
-variable e n = define (fname n) double [load e 0] (Just $ LocalReference double $ UnName 0)
+variable e n = define (fname n) double [UnName 0 LLVM.AST.:= load (var e)] (Just $ lref 0)
 
 ass :: Expr -> Int -> [Definition]
 ass e@(v := w) n = let m  = fname (n + 1)
@@ -165,7 +183,7 @@ bin e n = let m  = fname (n + 1)
               is = instrs . toList $ e
               t  = Just $ if isVal e
                           then ConstantOperand . Float . Double $ val e
-                          else LocalReference double . UnName . toEnum . subtract 1 $ length is
+                          else lref . toEnum . subtract 1 $ length is
            in define m double is t
 
 mod :: [Definition] -> Module
@@ -175,6 +193,12 @@ mod ds = defaultModule
   , moduleSourceFileName = ""
   , moduleDefinitions = ds <> pure (eval ds)
   }
+
+isVoid :: Module -> Bool
+isVoid = (void ==) . returnType . getInner . fromJust . find (isEval . name . getInner) . moduleDefinitions
+ where
+  isEval (Name n) = n == "eval"
+  
 
 compile :: [Expr] -> Module
 compile es = mod . nub . concatMap compileLine $ es

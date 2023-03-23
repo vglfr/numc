@@ -20,10 +20,10 @@ main = do
   f <- case parse s of
           Success e -> pure e
           Failure e -> die $ show e
-  let o = boilerplate $ compile f
+  let m = boilerplate $ compile f
       b = takeBaseName p
-  writeLL  o ("ll/" <> b <> ".ll")
-  writeBin o ("bin/" <> b)
+  writeLL  m ("ll/" <> b <> ".ll")
+  writeBin m ("bin/" <> b)
 
   readProcess "bat" [p] mempty >>= putStrLn . ("---\n" <>) . init
   readProcess "bat" ["--color=always", "ll/" <> b <> ".ll"] mempty >>= putStrLn . ("---" <>) . init

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Numc.Codegen where
 
 import Prelude hiding (writeFile)
@@ -12,33 +10,34 @@ import LLVM.AST
     BasicBlock (BasicBlock)
   , Definition (GlobalDefinition)
   , Module (moduleDefinitions)
-  , Name (Name, UnName)
+  , Name (UnName)
   , Named ((:=), Do)
   , Operand (ConstantOperand, LocalReference)
   , Parameter (Parameter)
   , Terminator (Ret)
-  , Type (ArrayType, FunctionType)
+  , Type (ArrayType)
   )
 import LLVM.AST.CallingConvention (CallingConvention (C))
-import LLVM.AST.Constant (Constant (Array, GlobalReference, Int))
+import LLVM.AST.Constant (Constant (Array, Int))
 import LLVM.AST.Global (
     basicBlocks, functionDefaults, globalVariableDefaults, initializer, linkage, name, parameters, returnType, type',
   )
-import LLVM.AST.Instruction (Instruction (Call, GetElementPtr))
+import LLVM.AST.Instruction (Instruction (Call))
 import LLVM.AST.Linkage (Linkage (External))
-import LLVM.AST.Type (double, i8, i32, ptr, void)
+import LLVM.AST.Name (mkName)
+import LLVM.AST.Type (double, i8, i32, ptr)
 import LLVM.Context (withContext)
 import LLVM.Module (File (File), moduleLLVMAssembly, withModuleFromAST, writeObjectToFile)
 import LLVM.Target (withHostTargetMachineDefault)
 
 import System.Process (readProcess)
 
-import Numc.Compiler (getF)
+import Numc.Compiler (getelementptr, isVoid, fptr)
 
 fstr :: Definition
 fstr = GlobalDefinition globalVariableDefaults
   {
-    name = Name ".fstr"
+    name = mkName ".fstr"
   , initializer = Just $ Array i8 [Int 8 37, Int 8 102] -- %f
   , type' = ArrayType 2 i8
   }
@@ -46,11 +45,9 @@ fstr = GlobalDefinition globalVariableDefaults
 printf :: Definition
 printf = GlobalDefinition functionDefaults
   {
-    name = Name "printf"
+    name = mkName "printf"
   , linkage = External
-  , parameters =
-    ( [ Parameter (ptr i8) (UnName 0) [] ]
-    , True )
+  , parameters = (pure $ Parameter (ptr i8) (UnName 0) [], True)
   , returnType = i32
   , basicBlocks = []
   }
@@ -58,38 +55,21 @@ printf = GlobalDefinition functionDefaults
 main :: Module -> Definition
 main m = GlobalDefinition functionDefaults
   {
-    name = Name "main"
+    name = mkName "main"
   , returnType = i8
-  , basicBlocks = pure $ BasicBlock (Name "") body (Do $ Ret (Just $ ConstantOperand $ Int 8 0) [])
+  , basicBlocks = pure $ BasicBlock (mkName "") body (Do $ Ret (Just $ ConstantOperand $ Int 8 0) [])
   }
  where
-  body = if void == (returnType . getF . last . moduleDefinitions $ m)
+  body = if isVoid m
          then [] -- call void eval
          else 
-           [ UnName 1 :=
-               GetElementPtr False
-                             (ConstantOperand $ GlobalReference (ptr $ ArrayType 2 i8) (Name ".fstr"))
-                             [ ConstantOperand $ Int 32 0
-                             , ConstantOperand $ Int 32 0 ]
-                             []
-           , UnName 2 :=
-               Call Nothing
-                    C
-                    []
-                    (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType double [] False) (Name "eval"))
-                    []
-                    []
-                    []
-           , Do $
-               Call Nothing
-                    C
-                    []
-                    (Right $ ConstantOperand $ GlobalReference (ptr $ FunctionType i32 [ptr i8] True) (Name "printf"))
-                    [ (LocalReference (ptr i8) (UnName 1), [])
-                    , (LocalReference   double (UnName 2), []) ]
-                    []
-                    []
+           [
+             UnName 1 := getelementptr (ArrayType 2 i8) ".fstr" 0
+           , UnName 2 := Call Nothing C [] (Right $ fptr double [] (mkName "eval")) [] [] []
+           , Do $ Call Nothing C [] (Right $ fptr i32 [ptr i8] (mkName "printf")) args [] []
            ]
+  args = [ (LocalReference (ptr i8) (UnName 1), [])
+         , (LocalReference   double (UnName 2), []) ]
 
 boilerplate :: Module -> Module
 boilerplate m = m { moduleDefinitions = [fstr, printf] <> moduleDefinitions m <> [main m] }

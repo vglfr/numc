@@ -5,18 +5,17 @@
 + compile to LLVM
 + interpret (repl)
 + parser + printer
++ variables
++ assignments
 
-- variables
-- assignments
 - multi statement / line
 
-- DataKinds
-
 - functions
-- external functions
-- boolean types
+- comparisons
 - conditionals
+- external functions
 
+- boolean types
 - fX, iX, uX types
 
 - base parser (integrate num)
