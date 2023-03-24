@@ -6,25 +6,25 @@ import Data.ByteString (pack, readFile, unpack)
 import Test.Hspec (Spec, anyException, describe, it, shouldBe, shouldThrow)
 
 import Numc.Compiler (compile, ir)
-import Numc.Example (a1, a2, b1, b2, b3, b4, m1, m2, m3, m4, m5, m6, b20, val1, val2, val3, var1)
+import Numc.Example (a1, a2, b1, b2, b3, b4, m1, m2, m3, m4, m5, m6, b20, v1, v2, v3, w1)
 
 testCompile :: Spec
 testCompile = describe "Numc.Compiler" $ do
   let compile' es = trim <$> (ir . compile $ es)
       trim = pack . tail . unpack
 
-  it "compileVal val1 5" $ do
-    i <- compile' [val1]
+  it "compileVal v1 5" $ do
+    i <- compile' [v1]
     o <- readFile "test/output/val1.ll"
     i `shouldBe` o
 
-  it "compileVal val2 5.5" $ do
-    i <- compile' [val2]
+  it "compileVal v2 5.5" $ do
+    i <- compile' [v2]
     o <- readFile "test/output/val2.ll"
     i `shouldBe` o
 
-  it "compileVal val3 -5" $ do
-    i <- compile' [val3]
+  it "compileVal v3 -5" $ do
+    i <- compile' [v3]
     o <- readFile "test/output/val3.ll"
     i `shouldBe` o
 
@@ -54,12 +54,12 @@ testCompile = describe "Numc.Compiler" $ do
     i `shouldBe` o
 
   it "compileVar a1 : [var1] x = 5; x" $ do
-    i <- compile' $ a1 : [var1]
+    i <- compile' $ a1 : [w1]
     o <- readFile "test/output/var1.ll"
     i `shouldBe` o
 
-  it "compileVar [var1] x = 5; x" $ do
-    compile' [var1] `shouldThrow` anyException
+  it "compileVar [w1] x = 5; x" $ do
+    compile' [w1] `shouldThrow` anyException
 
   it "compileAss a1 x = 5" $ do
     i <- compile' [a1]

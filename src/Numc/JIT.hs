@@ -1,4 +1,3 @@
-{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
@@ -19,7 +18,7 @@ import LLVM.AST
   , Instruction (Store)
   , Module (moduleDefinitions)
   , Name (UnName, Name)
-  , Named (Do, (:=))
+  , Named ((:=), Do)
   , Terminator (Ret)
   , Type (ArrayType)
   )
@@ -35,8 +34,8 @@ import LLVM.Module (withModuleFromAST)
 
 import Numc.Compiler (getInner, getelementptr, isF, load, lref)
 
-foreign import capi "dynamic" eval :: FunPtr (IO Double) -> IO Double
-foreign import capi "dynamic" context :: FunPtr (IO (Ptr Double)) -> IO (Ptr Double)
+foreign import ccall "dynamic" eval :: FunPtr (IO Double) -> IO Double
+foreign import ccall "dynamic" context :: FunPtr (IO (Ptr Double)) -> IO (Ptr Double)
 
 gs :: Int -> Definition
 gs n = GlobalDefinition globalVariableDefaults
