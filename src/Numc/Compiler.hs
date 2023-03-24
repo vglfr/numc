@@ -6,9 +6,8 @@ module Numc.Compiler where
 import Prelude hiding (div, mod, putStrLn)
 
 import Data.ByteString (ByteString)
--- import Data.ByteString.Internal (unpackChars)
--- import Data.ByteString.Short (fromShort, unpack)
-import Data.ByteString.Short (unpack)
+import Data.ByteString.Internal (unpackChars)
+import Data.ByteString.Short (fromShort, unpack)
 import Data.List (elemIndex, nub, find)
 import Data.Maybe (fromJust)
 
@@ -58,10 +57,10 @@ isF d = case d of
           GlobalDefinition (Function {}) -> True
           _ -> False
 
--- vars :: Module -> [Expr]
--- vars = fmap (expr . name . getInner) . filter (not . isF) . moduleDefinitions
---  where
---   expr (Name n) = Var . unpackChars . fromShort $ n
+vars :: Module -> [Expr]
+vars = fmap expr . filter (/= ".gs") . fmap (name . getInner) . filter (not . isF) . moduleDefinitions
+ where
+  expr (Name n) = Var . unpackChars . fromShort $ n
 
 getInner :: Definition -> Global
 getInner (GlobalDefinition x) = x

@@ -4,6 +4,8 @@ import Prelude hiding (writeFile)
 
 import qualified Control.Monad as M (void)
 
+import System.Process (readProcess)
+
 import Data.ByteString (writeFile)
 import LLVM.AST
   (
@@ -29,8 +31,6 @@ import LLVM.AST.Type (double, i8, i32, ptr)
 import LLVM.Context (withContext)
 import LLVM.Module (File (File), moduleLLVMAssembly, withModuleFromAST, writeObjectToFile)
 import LLVM.Target (withHostTargetMachineDefault)
-
-import System.Process (readProcess)
 
 import Numc.Compiler (getelementptr, isVoid, fptr)
 

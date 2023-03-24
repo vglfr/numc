@@ -10,6 +10,8 @@ import Data.Maybe (fromJust)
 import Foreign.Ptr (FunPtr, Ptr, castFunPtr)
 import Foreign.Marshal.Array (peekArray)
 
+import Data.ByteString.Short (fromShort)
+import Data.ByteString.Internal (unpackChars)
 import LLVM.AST
   (
     BasicBlock (BasicBlock)
@@ -31,9 +33,7 @@ import LLVM.Exception (EncodeException)
 import LLVM.ExecutionEngine (getFunction, withMCJIT, withModuleInEngine)
 import LLVM.Module (withModuleFromAST)
 
-import Numc.Compiler (isF, getelementptr, load, lref, getInner)
-import Data.ByteString.Short (fromShort)
-import Data.ByteString.Internal (unpackChars)
+import Numc.Compiler (getInner, getelementptr, isF, load, lref)
 
 foreign import capi "dynamic" eval :: FunPtr (IO Double) -> IO Double
 foreign import capi "dynamic" context :: FunPtr (IO (Ptr Double)) -> IO (Ptr Double)
@@ -51,13 +51,13 @@ ctx ds n = GlobalDefinition functionDefaults
   {
     name = mkName "ctx"
   , returnType = ptr double
-  , basicBlocks = pure $ BasicBlock (mkName "") (concatMap body $ zip (enumFromThen 1 3) ds) (Do $ Ret (Just $ lref 1) [])
+  , basicBlocks = pure $ BasicBlock (mkName "") (concatMap body $ zip [0..] ds) (Do $ Ret (if n == 0 then Nothing else Just $ lref 0) [])
   }
  where
   body (i,d) = [
-                 UnName  i    := getelementptr (ArrayType (fromIntegral n) double) ".gs" 0
-               , UnName (i+1) := load (unpackChars . fromShort . sname . name . getInner $ d)
-               , Do $ Store False (lref i) (lref $ i+1) Nothing 0 []
+                 UnName (i*2)     := getelementptr (ArrayType (fromIntegral n) double) ".gs" (fromIntegral i)
+               , UnName (i*2 + 1) := load (unpackChars . fromShort . sname . name . getInner $ d)
+               , Do $ Store False (lref $ i*2) (lref $ i*2 + 1) Nothing 0 []
                ]
   sname (Name s) = s
 

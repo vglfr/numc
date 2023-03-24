@@ -7,23 +7,17 @@
 + parser + printer
 + variables
 + assignments
-
-- multi statement / line
++ multi statement + repl state
 
 - functions
-- comparisons
-- conditionals
+
 - external functions
 
+typec:
+- comparisons
+- conditionals
 - boolean types
 - fX, iX, uX types
-
 - base parser (integrate num)
-
 - optimizer (integrate lambdac)
-
-- CLI UI
-
-- multiline repl input
-
 - design inquiry (what market needs)
