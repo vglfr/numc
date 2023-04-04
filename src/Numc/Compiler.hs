@@ -44,7 +44,7 @@ import LLVM.AST.Type (double, ptr, void)
 import LLVM.Internal.Context (withContext)
 import LLVM.Internal.Module (withModuleFromAST, moduleLLVMAssembly)
 
-import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Val, Var), isVal, val, var)
+import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Exe, Fun, Val, Var), isVal, val, var)
 
 index :: (Eq a, Enum b) => a -> [a] -> b
 index x xs = toEnum . fromJust $ elemIndex x xs
@@ -85,8 +85,8 @@ fmul a b = FMul noFastMathFlags a b []
 fdiv :: Operand -> Operand -> Instruction
 fdiv a b = FDiv noFastMathFlags a b []
 
-fptr :: Type -> [Type] -> Name -> Operand
-fptr t ts n = ConstantOperand $ GlobalReference (ptr $ FunctionType t ts False) n
+fptr :: Type -> [Type] -> Bool -> Name -> Operand
+fptr t ts v n = ConstantOperand $ GlobalReference (ptr $ FunctionType t ts v) n
 
 gref :: String -> Operand
 gref = ConstantOperand . GlobalReference (ptr double) . mkName
@@ -101,8 +101,8 @@ call d = let f = getInner d
              v = case n of
                    Name n' -> fromIntegral . last . unpack $ n'
           in case t of
-               FloatingPointType _ -> UnName v LLVM.AST.:= Call Nothing C [] (Right $ fptr t [] n) [] [] []
-               VoidType -> Do $ Call Nothing C [] (Right $ fptr t [] n) [] [] []
+               FloatingPointType _ -> UnName v LLVM.AST.:= Call Nothing C [] (Right $ fptr t [] False n) [] [] []
+               VoidType -> Do $ Call Nothing C [] (Right $ fptr t [] False n) [] [] []
 
 store :: String -> Word -> Instruction
 store g l = Store False (gref g) (lref l) Nothing 0 []
@@ -211,7 +211,8 @@ compile es = mod . nub . concatMap compileLine $ es
                         _ := _ -> ass e n
                         Val _  -> pure $ bin e n
                         Var _  -> pure $ variable e n
-                        _ -> error "fook"
+                        Fun {} -> error "fook"
+                        Exe {} -> error "fook"
 
 ir :: Module -> IO ByteString
 ir m = withContext $ \c -> withModuleFromAST c m moduleLLVMAssembly

@@ -64,8 +64,8 @@ main m = GlobalDefinition functionDefaults
          else 
            [
              UnName 1 := getelementptr (ArrayType 2 i8) ".fstr" 0
-           , UnName 2 := Call Nothing C [] (Right $ fptr double [] (mkName "eval")) [] [] []
-           , Do $ Call Nothing C [] (Right $ fptr i32 [ptr i8] (mkName "printf")) args [] []
+           , UnName 2 := Call Nothing C [] (Right $ fptr double [] False (mkName "eval")) [] [] []
+           , Do $ Call Nothing C [] (Right $ fptr i32 [ptr i8] True (mkName "printf")) args [] []
            ]
   args = [ (LocalReference (ptr i8) (UnName 1), [])
          , (LocalReference   double (UnName 2), []) ]

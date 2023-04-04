@@ -4,17 +4,21 @@ module Numc.Example where
 
 import Numc.AST (Expr ((:+), (:-), (:*), (:/), (:=), Fun, Exe))
 
-{- 5 -}
-v1 :: Expr
-v1 = 5
+{- x = 5 -}
+a1 :: Expr
+a1 = "x" := 5
 
-{- 5.5 -}
-v2 :: Expr
-v2 = 5.5
+{- x = 5 + 1 / 4 - 3 * 2 -}
+a2 :: Expr
+a2 = "x" := 5 :+ 1 :/ 4 :- 3 :* 2
 
-{- -5 -}
-v3 :: Expr
-v3 = -5
+{- x = 5 + y -}
+a3 :: Expr
+a3 = "x" := 5 :+ "y"
+
+{- x = 5 + f(y) -}
+a4 :: Expr
+a4 = "x" := 5 :+ Exe "f" ["y"]
 
 {- 1 + 2 -}
 b1 :: Expr
@@ -44,25 +48,58 @@ b6 = 1 :- -2
 b20 :: Expr
 b20 = 5 :+ 1 :- 3 :+ 6 :* 2 :/ 4
 
-{- x -}
-w1 :: Expr
-w1 = "x"
+{- f(5) -}
+e1 :: Expr
+e1 = Exe "f" [5]
 
-{- x = 5 -}
-a1 :: Expr
-a1 = "x" := 5
+{- f(5, 3) -}
+e2 :: Expr
+e2 = Exe "f" [5, 3]
 
-{- x = 5 + 1 / 4 - 3 * 2 -}
-a2 :: Expr
-a2 = "x" := 5 :+ 1 :/ 4 :- 3 :* 2
+{- f() -}
+e3 :: Expr
+e3 = Exe "f" []
 
-{- x = 5 + y -}
-a3 :: Expr
-a3 = "x" := 5 :+ "y"
+{- f(5 + 3) -}
+e4 :: Expr
+e4 = Exe "f" [5 :+ 3]
 
-{- x = 5 + f(y) -}
-a4 :: Expr
-a4 = "x" := 5 :+ Exe "f" ["y"]
+{- f(5 + y) -}
+e5 :: Expr
+e5 = Exe "f" [5 :+ "y"]
+
+{-
+f(x) {
+  (x + x) * x 
+}
+-}
+f1 :: Expr
+f1 = Fun "f" ["x"] [("x" :+ "x") :* "x"]
+
+{-
+f(x, y) {
+  (x + y) * x / y 
+}
+-}
+f2 :: Expr
+f2 = Fun "f" ["x", "y"] [("x" :+ "y") :* "x" :/ "y"]
+
+{-
+f(x, y) {
+  x + 2;
+  x / y 
+}
+-}
+f3 :: Expr
+f3 = Fun "f" ["x", "y"] ["x" :+ 2, "x" :/ "y"]
+
+{-
+f() {
+  5 
+}
+-}
+f4 :: Expr
+f4 = Fun "f" [] [5]
 
 {-
 4 - 3;
@@ -155,47 +192,18 @@ m7 =
   , "x" := Exe "f" [4] :* 2
   ]
 
-{-
-f(x) {
-  (x + x) * x 
-}
--}
-f1 :: Expr
-f1 = Fun "f" ["x"] [("x" :+ "x") :* "x"]
+{- 5 -}
+v1 :: Expr
+v1 = 5
 
-{-
-f(x, y) {
-  (x + y) * x / y 
-}
--}
-f2 :: Expr
-f2 = Fun "f" ["x", "y"] [("x" :+ "y") :* "x" :/ "y"]
+{- 5.5 -}
+v2 :: Expr
+v2 = 5.5
 
-{-
-f(x, y) {
-  x + 2;
-  x / y 
-}
--}
-f3 :: Expr
-f3 = Fun "f" ["x", "y"] ["x" :+ 2, "x" :/ "y"]
+{- -5 -}
+v3 :: Expr
+v3 = -5
 
-{- f(5) -}
-e1 :: Expr
-e1 = Exe "f" [5]
-
-{- f(5, 3) -}
-e2 :: Expr
-e2 = Exe "f" [5, 3]
-
-{- f() -}
-e3 :: Expr
-e3 = Exe "f" []
-
-{- f(5 + 3) -}
-e4 :: Expr
-e4 = Exe "f" [5 :+ 3]
-
-{- f(5 + y) -}
-e5 :: Expr
-e5 = Exe "f" [5 :+ "y"]
+{- x -}
+w1 :: Expr
+w1 = "x"

@@ -8,7 +8,13 @@ import Text.Trifecta (eof, foldResult, parseString)
 import Numc.AST (Expr ((:+), (:-), (:*), (:/)))
 import Numc.Example
   (
-    a1, a2, a3, a4, b1, b2, b3, b4, b5, b6, e1, e2, e3, e4, e5, f1, f2, f3, m1, m2, m3, m4, m5, m6, m7, v1, v2,v3, w1
+    a1, a2, a3, a4
+  , b1, b2, b3, b4, b5, b6, b20
+  , e1, e2, e3, e4, e5
+  , f1, f2, f3, f4
+  , m1, m2, m3, m4, m5, m6, m7
+  , v1, v2, v3
+  , w1
   )
 import Numc.Parser (parseAss, parseBin, parseExe, parseFun, parseMod, parseVal, parseVar)
 
@@ -49,6 +55,9 @@ testParseFun = describe "Numc.Parser" $ do
 
   it "parseFun f3 f(x, y) { x + 2; x / y }" $ do
     parse "f(x, y) { x + 2; x / y }" `shouldBe` Just f3
+
+  it "parseFun f4 f() { 5 }" $ do
+    parse "f() { 5 }" `shouldBe` Just f4
 
 testParseExe :: Spec
 testParseExe = describe "Numc.Parser" $ do
@@ -247,6 +256,9 @@ testParseBin = describe "Numc.Parser" $ do
 
   it "parseBin 1 - -2" $ do
     parse "1 - -2" `shouldBe` Just b6
+
+  it "parseBin b20 5 + 1 - 3 + 6 * 2 / 4" $ do
+    parse "5 + 1 - 3 + 6 * 2 / 4" `shouldBe` Just b20
 
 testParseVar :: Spec
 testParseVar = describe "Numc.Parser" $ do
