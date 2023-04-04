@@ -185,6 +185,15 @@ bin e n = let m  = fname (n + 1)
                           else lref . toEnum . subtract 1 $ length is
            in define m double is t
 
+fun :: Name -> [Expr] -> [Expr] -> Definition
+fun n _ _ = GlobalDefinition functionDefaults
+  {
+    name = n
+  , returnType = double
+  , basicBlocks = pure $ BasicBlock (Name "") is (Do $ Ret t [])
+  }
+
+
 mod :: [Definition] -> Module
 mod ds = defaultModule
   {
@@ -211,7 +220,7 @@ compile es = mod . nub . concatMap compileLine $ es
                         _ := _ -> ass e n
                         Val _  -> pure $ bin e n
                         Var _  -> pure $ variable e n
-                        Fun {} -> error "fook"
+                        Fun (Var f) as bs -> pure $ fun (mkName f) as bs
                         Exe {} -> error "fook"
 
 ir :: Module -> IO ByteString
